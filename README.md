@@ -7,7 +7,9 @@ A modern, patient-friendly React/Next.js application designed specifically for c
 ## � Key Features
 
 ### 🎯 Core Functionality
-- **AI Chat Assistant**: Interactive cardiac health assistant with contextual responses
+- **AI Chat Assistant**: Azure AI Foundry-powered cardiac health assistant with specialized medical expertise
+- **Specialized Cardiac Agents**: Multiple AI specialists for nursing, exercise, diet, and medication guidance
+- **Smart Agent Routing**: Intelligent routing to appropriate specialists based on patient query content
 - **Secure Patient Authentication**: Complete signup/login system with Azure Cosmos DB
 - **Health Dashboard**: Real-time health metrics visualization with color-coded indicators
 - **Smart Reminder System**: Medication and appointment reminders with priority levels
@@ -36,10 +38,17 @@ A modern, patient-friendly React/Next.js application designed specifically for c
 - **Framer Motion**: Professional animations and smooth transitions
 - **Lucide React**: Healthcare-themed icon library
 
-### Backend & Database
+### Backend & AI Integration
+- **Azure AI Foundry**: Enterprise-grade AI platform with specialized cardiac agents
+- **Azure AI Projects SDK**: Official Microsoft SDK for agent integration
+- **Specialized AI Agents**: 
+  - Nursing Agent (asst_D0M6yedHC1F4ChVjMJN931Uk): General cardiac care
+  - Exercise Agent (asst_1kQBSif36F0mWMTALMLT4rj5): Safe exercise guidance
+  - Diet Agent (asst_DkqnIem7WvxBrSdvPWd91xMe): Cardiac nutrition
+  - Medication Agent (asst_pd3L2NT8eBacDuqCHcYlfVho): Drug interactions
 - **Azure Cosmos DB**: NoSQL database optimized for patient data
 - **bcryptjs**: Industry-standard password hashing and verification
-- **Next.js API Routes**: Server-side authentication and data endpoints
+- **Next.js API Routes**: Server-side authentication and AI orchestration endpoints
 
 ### Development & Quality
 - **ESLint**: Code quality enforcement and consistency
@@ -73,17 +82,32 @@ A modern, patient-friendly React/Next.js application designed specifically for c
    cp .env.example .env.local
    ```
    
-   Then edit `.env.local` with your actual Azure Cosmos DB credentials:
+   Then edit `.env.local` with your actual credentials:
    ```env
+   # Azure Cosmos DB Configuration
    COSMOS_DB_ENDPOINT=https://your-account.documents.azure.com:443/
    COSMOS_DB_KEY=your_actual_cosmos_db_key_from_azure_portal
    COSMOS_DB_DATABASE_NAME=CardiacHealthDB
    COSMOS_DB_CONTAINER_NAME=patients
+   
+   # Azure AI Foundry Configuration
+   AZURE_PROJECT_ENDPOINT=https://your-project.services.ai.azure.com/api/projects/your-project
+   AZURE_SUBSCRIPTION_ID=your-azure-subscription-id
+   AZURE_RESOURCE_GROUP_NAME=your-resource-group-name
+   AZURE_PROJECT_NAME=your-project-name
+   
+   # Azure OpenAI Configuration (for Azure AI Foundry agents)
+   AZURE_OPENAI_ENDPOINT=https://your-openai.openai.azure.com/
+   AZURE_OPENAI_API_VERSION=2024-12-01-preview
+   
+   # Specialized Cardiac Agent IDs
+   NURSING_AGENT_ID=asst_D0M6yedHC1F4ChVjMJN931Uk
+   EXERCISE_AGENT_ID=asst_1kQBSif36F0mWMTALMLT4rj5
+   DIET_AGENT_ID=asst_DkqnIem7WvxBrSdvPWd91xMe
+   MEDICATION_AGENT_ID=asst_pd3L2NT8eBacDuqCHcYlfVho
    ```
    
    **⚠️ Security Note**: Never commit `.env.local` or any file containing real secrets to version control!
-   COSMOS_DB_CONTAINER_NAME=patients
-   ```
 
 4. **Run the development server:**
    ```bash
@@ -111,14 +135,17 @@ src/
 │   │   └── page.tsx             # Login form with patient ID validation
 │   ├── signup/                  # Patient registration
 │   │   └── page.tsx             # Comprehensive signup with email/mobile
-│   └── api/                     # Authentication API endpoints
-│       └── auth/
-│           ├── login/           # Patient login API
-│           └── signup/          # Patient registration API
+│   └── api/                     # API endpoints
+│       ├── auth/                # Authentication API endpoints
+│       │   ├── login/           # Patient login API
+│       │   └── signup/          # Patient registration API
+│       └── chat/                # AI Chat API
+│           └── route.ts         # Azure AI Foundry integration endpoint
 ├── components/                   # Reusable healthcare components
 │   ├── AgentPersonality.tsx     # AI agent mood and personality system
 │   ├── HealthDashboard.tsx      # Health metrics visualization
 │   ├── HeartWithBeat.tsx        # Custom heart + animated heartbeat
+│   ├── MessageCard.tsx          # Chat message display component
 │   ├── ReminderSystem.tsx       # Medication/appointment reminders
 │   └── auth/
 │       └── ProtectedRoute.tsx   # Route protection with loading states
@@ -126,6 +153,9 @@ src/
 │   ├── database/               # Azure Cosmos DB operations
 │   │   ├── cosmos.ts           # Database connection and setup
 │   │   └── patients.ts         # Patient CRUD operations with validation
+│   ├── services/               # Azure AI Foundry integration
+│   │   ├── cardiacAgent.ts     # Main agent service entry point
+│   │   └── cardiacAgentOrchestration.ts # AI agent routing and orchestration
 │   ├── types/                  # TypeScript interfaces
 │   │   └── patient.ts          # Patient data models and auth types
 │   └── utils.ts                # Helper functions and utilities
@@ -141,10 +171,16 @@ src/
 - **Session Management**: Complete login/logout functionality with protected routes
 
 ### AI Health Assistant
-- **Contextual Responses**: AI assistant tailored for cardiac health conversations
-- **Patient History Integration**: Responses based on individual patient medical problems
-- **Quick Suggestions**: Pre-defined cardiac health questions and concerns
-- **Typing Indicators**: Realistic conversation experience with loading states
+- **Azure AI Foundry Integration**: Enterprise-grade AI platform with specialized cardiac expertise
+- **Multi-Agent Architecture**: Four specialized agents for comprehensive cardiac care:
+  - **Nursing Agent**: General cardiac care, patient education, and symptom assessment
+  - **Exercise Agent**: Safe exercise guidance, activity recommendations, and fitness planning
+  - **Diet Agent**: Cardiac-friendly nutrition, meal planning, and dietary restrictions
+  - **Medication Agent**: Drug interactions, dosage guidance, and medication management
+- **Smart Query Routing**: Intelligent analysis of patient questions to route to appropriate specialist
+- **Patient Context Integration**: Responses tailored to individual patient medical history
+- **Real-time Responses**: Live AI agents providing immediate medical guidance
+- **Conversation Memory**: Context-aware multi-turn conversations with persistent thread management
 
 ### Health Monitoring Dashboard
 - **Real-time Metrics**: Heart rate, blood pressure, medication adherence tracking
@@ -157,6 +193,74 @@ src/
 - **Appointment Management**: Healthcare visit scheduling and reminders
 - **Exercise Prompts**: Activity reminders for cardiac health maintenance
 - **Completion Tracking**: Interactive task completion with visual feedback
+
+## 🤖 Azure AI Foundry Integration
+
+### Specialized Cardiac Agents
+The application leverages Azure AI Foundry's enterprise-grade AI platform with four specialized cardiac health agents:
+
+#### 🩺 Nursing Agent (General Cardiac Care)
+- **Agent ID**: `asst_D0M6yedHC1F4ChVjMJN931Uk`
+- **Expertise**: Patient education, symptom assessment, general cardiac care guidance
+- **Triggers**: General health questions, anxiety, basic cardiac concerns
+- **Example**: "I'm feeling anxious about my heart condition"
+
+#### 🏃‍♂️ Exercise Agent (Cardiac Exercise Specialist)
+- **Agent ID**: `asst_1kQBSif36F0mWMTALMLT4rj5`
+- **Expertise**: Safe exercise protocols, activity recommendations, fitness planning
+- **Triggers**: Exercise, fitness, physical activity, movement questions
+- **Example**: "What exercises are safe for someone with heart failure?"
+
+#### 🥗 Diet Agent (Cardiac Nutrition Specialist)
+- **Agent ID**: `asst_DkqnIem7WvxBrSdvPWd91xMe`
+- **Expertise**: Heart-healthy nutrition, meal planning, dietary restrictions
+- **Triggers**: Food, diet, nutrition, eating, meal questions
+- **Example**: "What foods should I avoid with my cardiac condition?"
+
+#### 💊 Medication Agent (Cardiac Medication Specialist)
+- **Agent ID**: `asst_pd3L2NT8eBacDuqCHcYlfVho`
+- **Expertise**: Drug interactions, dosage guidance, medication management
+- **Triggers**: Medication, pills, dosage, drug, prescription questions
+- **Example**: "When should I take my heart medication?"
+
+### AI Orchestration Architecture
+
+```typescript
+interface CardiacOrchestrationService {
+  sendMessage(message: string, patientContext: PatientContext): Promise<AgentResponse>
+  
+  // Smart routing based on message content
+  private determineSpecialist(message: string): AgentType
+  
+  // Azure AI Foundry agent communication
+  private callSpecializedAgent(
+    agentId: string, 
+    message: string, 
+    patientContext: PatientContext
+  ): Promise<string>
+}
+
+// Agent routing logic
+const routingKeywords = {
+  exercise: ['exercise', 'workout', 'activity', 'fitness', 'walk', 'run'],
+  diet: ['food', 'eat', 'diet', 'nutrition', 'meal', 'cook'],
+  medication: ['medication', 'medicine', 'pill', 'drug', 'dosage'],
+  nursing: ['*'] // Default fallback for all other queries
+}
+```
+
+### Real-time AI Responses
+- **Live Agent Calls**: Every request goes directly to Azure AI Foundry (no caching)
+- **Thread Management**: Each conversation uses Azure AI thread system
+- **Message History**: Maintains conversation context within threads
+- **Error Handling**: Graceful fallbacks with helpful error messages
+- **Performance**: Optimized for healthcare responsiveness requirements
+
+### Security & Compliance
+- **DefaultAzureCredential**: Enterprise authentication with Azure identity
+- **Environment Configuration**: All agent IDs and endpoints securely stored
+- **HIPAA Considerations**: Healthcare data handling best practices
+- **Audit Logging**: Comprehensive logging for regulatory compliance
 
 ## 🎨 Design System & Accessibility
 
@@ -215,10 +319,24 @@ interface PatientSignupData {
 ```
 
 ### Chat Interaction Examples
-- **Medication Questions**: "When should I take my heart medication?"
+- **General Cardiac Care**: "I'm feeling anxious about my heart condition"
+- **Exercise Questions**: "What exercises are safe for someone with heart failure?"
+- **Medication Queries**: "When should I take my heart medication?"
+- **Dietary Guidance**: "What foods should I avoid with my cardiac condition?"
 - **Symptom Reporting**: "I'm experiencing chest discomfort"
-- **Exercise Guidance**: "Is it safe for me to exercise today?"
-- **Emergency Support**: "I'm feeling anxious about my heart"
+- **Emergency Support**: "I'm having trouble breathing"
+
+### Azure AI Foundry Agent Responses
+```typescript
+// Example response from Exercise Agent
+{
+  "success": true,
+  "message": "For patients with heart failure, it is crucial to engage in safe and appropriate physical activities. Here are some recommended exercises:\n\n1. **Walking**: Start with 5-10 minutes daily and gradually increase\n2. **Chair exercises**: Upper body movements while seated\n3. **Light stretching**: Gentle flexibility exercises\n\n⚠️ Always consult your cardiologist before starting any exercise program.",
+  "timestamp": "2025-09-15T15:30:41.996Z",
+  "agent": "exercise",
+  "specialist": "Cardiac Exercise Specialist"
+}
+```
 
 ## 🔒 Security & Data Protection
 
@@ -233,6 +351,13 @@ interface PatientSignupData {
 - **Partition Key Strategy**: Optimized data partitioning using patient IDs
 - **Access Control**: Role-based access with secure connection strings
 - **Data Validation**: Type-safe operations with TypeScript interfaces
+
+### AI Platform Security
+- **Azure AI Foundry**: Enterprise security with DefaultAzureCredential authentication
+- **Environment Variables**: All AI agent IDs and endpoints stored securely
+- **Agent Isolation**: Specialized agents with controlled access and permissions
+- **Secure API Communication**: Encrypted communication with Azure AI services
+- **No Hardcoded Secrets**: All sensitive configuration in environment variables
 
 ### Privacy Compliance
 - **HIPAA Considerations**: Healthcare data handling best practices
@@ -281,11 +406,18 @@ echo $COSMOS_DB_KEY
 curl -I $COSMOS_DB_ENDPOINT
 ```
 
-**Authentication Problems**
+**AI Agent Issues**
 ```bash
-# Clear browser cache and cookies
-# Check patient ID format (PT + 8 characters)
-# Verify password requirements
+# Verify Azure AI configuration
+echo $AZURE_PROJECT_ENDPOINT
+echo $NURSING_AGENT_ID
+
+# Test Azure authentication
+az account show
+
+# Check agent connectivity
+curl -H "Authorization: Bearer $(az account get-access-token --query accessToken -o tsv)" \
+  "$AZURE_PROJECT_ENDPOINT/agents"
 ```
 
 **Build Errors**
@@ -309,25 +441,29 @@ npm install
 
 ## 🔮 Future Roadmap
 
-### Phase 1: AI Integration
-- **Azure AI Foundry**: Real AI responses for patient queries
-- **Natural Language Processing**: Enhanced understanding of medical terminology
-- **Conversation Memory**: Context-aware multi-turn conversations
+### ✅ Phase 1: AI Integration (COMPLETED)
+- **Azure AI Foundry**: Real AI responses for patient queries with specialized cardiac agents
+- **Multi-Agent Architecture**: Nursing, exercise, diet, and medication specialists
+- **Smart Routing**: Intelligent query analysis and agent selection
+- **Secure Configuration**: Environment-based Azure AI credentials
 
 ### Phase 2: Enhanced Health Features
 - **Wearable Device Integration**: Apple Health, Fitbit, Garmin connectivity
 - **Biometric Data Sync**: Real-time heart rate and blood pressure monitoring
 - **Health Reports**: PDF generation for healthcare provider sharing
+- **Advanced Analytics**: Health trend analysis with predictive insights
 
 ### Phase 3: Communication Features
 - **Voice Interaction**: Speech-to-text and text-to-speech capabilities
 - **Video Consultations**: Telemedicine integration with healthcare providers
 - **Emergency Contacts**: Family/caregiver notifications and alerts
+- **Multi-language Support**: Localization for diverse patient populations
 
-### Phase 4: Advanced Analytics
-- **Health Trend Analysis**: Machine learning for health pattern recognition
-- **Predictive Insights**: Early warning systems for health deterioration
+### Phase 4: Advanced AI Capabilities
+- **Conversation Memory**: Persistent patient conversation history across sessions
 - **Personalized Recommendations**: AI-driven lifestyle and medication suggestions
+- **Health Risk Assessment**: Predictive modeling for cardiac events
+- **Clinical Decision Support**: Integration with electronic health records
 
 ## 🤝 Contributing
 
@@ -420,13 +556,34 @@ Create new components in the `/src/components` directory following the establish
 
 ## 🧪 Future Enhancements
 
-- Integration with Azure AI Foundry for real AI responses
-- Voice interaction capabilities
-- Biometric data integration
-- Emergency contact system
-- Multi-language support
-- Dark mode theme
-- Progressive Web App features
+- ✅ **Azure AI Foundry Integration** - COMPLETED: Full integration with specialized cardiac agents
+- ✅ **Multi-Agent Architecture** - COMPLETED: Nursing, exercise, diet, and medication specialists  
+- ✅ **Smart Query Routing** - COMPLETED: Intelligent agent selection based on content analysis
+- ✅ **Environment-based Configuration** - COMPLETED: Secure credential management
+- 🔄 Voice interaction capabilities
+- 🔄 Biometric data integration
+- 🔄 Emergency contact system
+- 🔄 Multi-language support
+- 🔄 Dark mode theme
+- 🔄 Progressive Web App features
+
+## 📊 Current Status
+
+### ✅ Completed Features
+- **Azure AI Foundry Integration**: Full enterprise-grade AI platform integration
+- **Specialized Cardiac Agents**: Four expert AI agents for comprehensive cardiac care
+- **Smart Agent Orchestration**: Intelligent routing system with content analysis
+- **Secure Configuration**: Environment-based credential management
+- **Real-time AI Responses**: Live agent communication with no caching
+- **Healthcare UI**: Patient-friendly interface with accessibility compliance
+- **Authentication System**: Secure patient login/signup with Azure Cosmos DB
+
+### 🚀 Live Application
+- **Development Server**: Ready to run on `http://localhost:3000`
+- **AI Integration**: Active Azure AI Foundry agent responses
+- **Database**: Connected to Azure Cosmos DB for patient data
+- **Security**: All sensitive credentials in environment variables
+- **Testing**: Verified end-to-end patient conversations with AI agents
 
 ## 📋 Project Structure
 
