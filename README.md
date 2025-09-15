@@ -8,8 +8,8 @@ A modern, patient-friendly React/Next.js application designed specifically for c
 
 ### 🎯 Core Functionality
 - **AI Chat Assistant**: Azure AI Foundry-powered cardiac health assistant with specialized medical expertise
-- **Specialized Cardiac Agents**: Multiple AI specialists for nursing, exercise, diet, and medication guidance
-- **Smart Agent Routing**: Intelligent routing to appropriate specialists based on patient query content
+- **Single Orchestration Agent**: Streamlined AI architecture with one orchestration agent managing all cardiac specialties
+- **Automatic Routing**: Intelligent internal routing to appropriate specialists based on patient query content
 - **Secure Patient Authentication**: Complete signup/login system with Azure Cosmos DB
 - **Health Dashboard**: Real-time health metrics visualization with color-coded indicators
 - **Smart Reminder System**: Medication and appointment reminders with priority levels
@@ -41,11 +41,9 @@ A modern, patient-friendly React/Next.js application designed specifically for c
 ### Backend & AI Integration
 - **Azure AI Foundry**: Enterprise-grade AI platform with specialized cardiac agents
 - **Azure AI Projects SDK**: Official Microsoft SDK for agent integration
-- **Specialized AI Agents**: 
-  - Nursing Agent (asst_D0M6yedHC1F4ChVjMJN931Uk): General cardiac care
-  - Exercise Agent (asst_1kQBSif36F0mWMTALMLT4rj5): Safe exercise guidance
-  - Diet Agent (asst_DkqnIem7WvxBrSdvPWd91xMe): Cardiac nutrition
-  - Medication Agent (asst_pd3L2NT8eBacDuqCHcYlfVho): Drug interactions
+- **Single Orchestration Agent**: 
+  - Orchestration Agent (asst_t5VlAQIahpzVTRn4igahAXJO): Central cardiac care coordinator that automatically routes to specialists
+  - Manages internal routing to: Nursing, Exercise, Diet, and Medication specialists
 - **Azure Cosmos DB**: NoSQL database optimized for patient data
 - **bcryptjs**: Industry-standard password hashing and verification
 - **Next.js API Routes**: Server-side authentication and AI orchestration endpoints
@@ -100,11 +98,8 @@ A modern, patient-friendly React/Next.js application designed specifically for c
    AZURE_OPENAI_ENDPOINT=https://your-openai.openai.azure.com/
    AZURE_OPENAI_API_VERSION=2024-12-01-preview
    
-   # Specialized Cardiac Agent IDs
-   NURSING_AGENT_ID=asst_D0M6yedHC1F4ChVjMJN931Uk
-   EXERCISE_AGENT_ID=asst_1kQBSif36F0mWMTALMLT4rj5
-   DIET_AGENT_ID=asst_DkqnIem7WvxBrSdvPWd91xMe
-   MEDICATION_AGENT_ID=asst_pd3L2NT8eBacDuqCHcYlfVho
+   # Single Orchestration Agent ID
+   ORCHESTRATION_AGENT_ID=asst_t5VlAQIahpzVTRn4igahAXJO
    ```
    
    **⚠️ Security Note**: Never commit `.env.local` or any file containing real secrets to version control!
@@ -154,8 +149,9 @@ src/
 │   │   ├── cosmos.ts           # Database connection and setup
 │   │   └── patients.ts         # Patient CRUD operations with validation
 │   ├── services/               # Azure AI Foundry integration
-│   │   ├── cardiacAgent.ts     # Main agent service entry point
-│   │   └── cardiacAgentOrchestration.ts # AI agent routing and orchestration
+│   │   ├── cardiacAgent.ts     # Simplified single orchestration agent service
+│   │   ├── cardiacAgent-backup.ts # Previous multi-agent implementation (backup)
+│   │   └── cardiacAgentOrchestration.ts # Reference orchestration service
 │   ├── types/                  # TypeScript interfaces
 │   │   └── patient.ts          # Patient data models and auth types
 │   └── utils.ts                # Helper functions and utilities
@@ -172,12 +168,12 @@ src/
 
 ### AI Health Assistant
 - **Azure AI Foundry Integration**: Enterprise-grade AI platform with specialized cardiac expertise
-- **Multi-Agent Architecture**: Four specialized agents for comprehensive cardiac care:
-  - **Nursing Agent**: General cardiac care, patient education, and symptom assessment
-  - **Exercise Agent**: Safe exercise guidance, activity recommendations, and fitness planning
-  - **Diet Agent**: Cardiac-friendly nutrition, meal planning, and dietary restrictions
-  - **Medication Agent**: Drug interactions, dosage guidance, and medication management
-- **Smart Query Routing**: Intelligent analysis of patient questions to route to appropriate specialist
+- **Single Orchestration Agent**: Streamlined architecture with one central agent (`asst_t5VlAQIahpzVTRn4igahAXJO`) that:
+  - Automatically analyzes patient questions
+  - Routes internally to appropriate specialists (Nursing, Exercise, Diet, Medication)
+  - Provides unified, expert cardiac care responses
+  - Maintains conversation context and patient history
+- **Simplified Message Flow**: Direct patient question + context → orchestration agent → specialized response
 - **Patient Context Integration**: Responses tailored to individual patient medical history
 - **Real-time Responses**: Live AI agents providing immediate medical guidance
 - **Conversation Memory**: Context-aware multi-turn conversations with persistent thread management
@@ -196,71 +192,61 @@ src/
 
 ## 🤖 Azure AI Foundry Integration
 
-### Specialized Cardiac Agents
-The application leverages Azure AI Foundry's enterprise-grade AI platform with four specialized cardiac health agents:
+### Simplified Orchestration Architecture
+The application uses a streamlined single-agent approach with Azure AI Foundry's enterprise-grade AI platform:
 
-#### 🩺 Nursing Agent (General Cardiac Care)
-- **Agent ID**: `asst_D0M6yedHC1F4ChVjMJN931Uk`
-- **Expertise**: Patient education, symptom assessment, general cardiac care guidance
-- **Triggers**: General health questions, anxiety, basic cardiac concerns
-- **Example**: "I'm feeling anxious about my heart condition"
+#### 🎯 Central Orchestration Agent
+- **Agent ID**: `asst_t5VlAQIahpzVTRn4igahAXJO`
+- **Role**: Central cardiac care coordinator that handles ALL patient queries
+- **Capabilities**: 
+  - Automatically analyzes patient questions
+  - Routes internally to appropriate specialists
+  - Provides unified responses from multiple specialties
+  - Maintains conversation context
 
-#### 🏃‍♂️ Exercise Agent (Cardiac Exercise Specialist)
-- **Agent ID**: `asst_1kQBSif36F0mWMTALMLT4rj5`
-- **Expertise**: Safe exercise protocols, activity recommendations, fitness planning
-- **Triggers**: Exercise, fitness, physical activity, movement questions
-- **Example**: "What exercises are safe for someone with heart failure?"
+#### � Internal Specialist Routing
+The orchestration agent automatically routes to these internal specialists:
+- **🩺 Nursing Specialist**: Patient education, symptom assessment, general cardiac care
+- **🏃‍♂️ Exercise Specialist**: Safe exercise protocols, activity recommendations, fitness planning  
+- **🥗 Diet Specialist**: Heart-healthy nutrition, meal planning, dietary restrictions
+- **💊 Medication Specialist**: Drug interactions, dosage guidance, medication management
 
-#### 🥗 Diet Agent (Cardiac Nutrition Specialist)
-- **Agent ID**: `asst_DkqnIem7WvxBrSdvPWd91xMe`
-- **Expertise**: Heart-healthy nutrition, meal planning, dietary restrictions
-- **Triggers**: Food, diet, nutrition, eating, meal questions
-- **Example**: "What foods should I avoid with my cardiac condition?"
-
-#### 💊 Medication Agent (Cardiac Medication Specialist)
-- **Agent ID**: `asst_pd3L2NT8eBacDuqCHcYlfVho`
-- **Expertise**: Drug interactions, dosage guidance, medication management
-- **Triggers**: Medication, pills, dosage, drug, prescription questions
-- **Example**: "When should I take my heart medication?"
-
-### AI Orchestration Architecture
+### Simplified Architecture Benefits
 
 ```typescript
-interface CardiacOrchestrationService {
+// Simple, clean message flow
+interface SimplifiedCardiacAgent {
   sendMessage(message: string, patientContext: PatientContext): Promise<AgentResponse>
   
-  // Smart routing based on message content
-  private determineSpecialist(message: string): AgentType
-  
-  // Azure AI Foundry agent communication
-  private callSpecializedAgent(
-    agentId: string, 
+  // Single orchestration agent handles everything
+  private callOrchestrationAgent(
     message: string, 
     patientContext: PatientContext
   ): Promise<string>
 }
 
-// Agent routing logic
-const routingKeywords = {
-  exercise: ['exercise', 'workout', 'activity', 'fitness', 'walk', 'run'],
-  diet: ['food', 'eat', 'diet', 'nutrition', 'meal', 'cook'],
-  medication: ['medication', 'medicine', 'pill', 'drug', 'dosage'],
-  nursing: ['*'] // Default fallback for all other queries
-}
+// Clean message format - no routing instructions needed
+const messageFormat = `
+Patient: ${patientName} (Medical History: ${medicalHistory})
+
+Question: ${userQuestion}
+`
 ```
 
 ### Real-time AI Responses
-- **Live Agent Calls**: Every request goes directly to Azure AI Foundry (no caching)
+- **Live Agent Calls**: Every request goes directly to Azure AI Foundry orchestration agent
 - **Thread Management**: Each conversation uses Azure AI thread system
 - **Message History**: Maintains conversation context within threads
 - **Error Handling**: Graceful fallbacks with helpful error messages
 - **Performance**: Optimized for healthcare responsiveness requirements
+- **Simplified Flow**: Single agent call per query (no complex routing or multiple API calls)
 
 ### Security & Compliance
 - **DefaultAzureCredential**: Enterprise authentication with Azure identity
-- **Environment Configuration**: All agent IDs and endpoints securely stored
+- **Environment Configuration**: Orchestration agent ID and endpoints securely stored
 - **HIPAA Considerations**: Healthcare data handling best practices
 - **Audit Logging**: Comprehensive logging for regulatory compliance
+- **Simplified Attack Surface**: Single agent endpoint reduces security complexity
 
 ## 🎨 Design System & Accessibility
 
@@ -328,13 +314,13 @@ interface PatientSignupData {
 
 ### Azure AI Foundry Agent Responses
 ```typescript
-// Example response from Exercise Agent
+// Example response from Orchestration Agent
 {
   "success": true,
   "message": "For patients with heart failure, it is crucial to engage in safe and appropriate physical activities. Here are some recommended exercises:\n\n1. **Walking**: Start with 5-10 minutes daily and gradually increase\n2. **Chair exercises**: Upper body movements while seated\n3. **Light stretching**: Gentle flexibility exercises\n\n⚠️ Always consult your cardiologist before starting any exercise program.",
   "timestamp": "2025-09-15T15:30:41.996Z",
-  "agent": "exercise",
-  "specialist": "Cardiac Exercise Specialist"
+  "agent": "orchestration",
+  "specialist": "Routed to Exercise Specialist internally"
 }
 ```
 
@@ -410,7 +396,7 @@ curl -I $COSMOS_DB_ENDPOINT
 ```bash
 # Verify Azure AI configuration
 echo $AZURE_PROJECT_ENDPOINT
-echo $NURSING_AGENT_ID
+echo $ORCHESTRATION_AGENT_ID
 
 # Test Azure authentication
 az account show
@@ -441,11 +427,12 @@ npm install
 
 ## 🔮 Future Roadmap
 
-### ✅ Phase 1: AI Integration (COMPLETED)
-- **Azure AI Foundry**: Real AI responses for patient queries with specialized cardiac agents
-- **Multi-Agent Architecture**: Nursing, exercise, diet, and medication specialists
-- **Smart Routing**: Intelligent query analysis and agent selection
+### ✅ Phase 1: Simplified AI Integration (COMPLETED)
+- **Azure AI Foundry**: Real AI responses for patient queries with single orchestration agent
+- **Streamlined Architecture**: Single agent handling all cardiac specialties internally
+- **Automatic Routing**: Intelligent query analysis and internal specialist routing
 - **Secure Configuration**: Environment-based Azure AI credentials
+- **Simplified Message Flow**: Clean patient context + question format
 
 ### Phase 2: Enhanced Health Features
 - **Wearable Device Integration**: Apple Health, Fitbit, Garmin connectivity
@@ -571,19 +558,19 @@ Create new components in the `/src/components` directory following the establish
 
 ### ✅ Completed Features
 - **Azure AI Foundry Integration**: Full enterprise-grade AI platform integration
-- **Specialized Cardiac Agents**: Four expert AI agents for comprehensive cardiac care
-- **Smart Agent Orchestration**: Intelligent routing system with content analysis
+- **Single Orchestration Agent**: Streamlined AI architecture with automatic internal routing
+- **Simplified Message Flow**: Clean patient context + question format
 - **Secure Configuration**: Environment-based credential management
-- **Real-time AI Responses**: Live agent communication with no caching
+- **Real-time AI Responses**: Live agent communication with optimized performance
 - **Healthcare UI**: Patient-friendly interface with accessibility compliance
 - **Authentication System**: Secure patient login/signup with Azure Cosmos DB
 
 ### 🚀 Live Application
 - **Development Server**: Ready to run on `http://localhost:3000`
-- **AI Integration**: Active Azure AI Foundry agent responses
+- **AI Integration**: Active Azure AI Foundry orchestration agent responses
 - **Database**: Connected to Azure Cosmos DB for patient data
 - **Security**: All sensitive credentials in environment variables
-- **Testing**: Verified end-to-end patient conversations with AI agents
+- **Testing**: Verified end-to-end patient conversations with single orchestration agent
 
 ## 📋 Project Structure
 
