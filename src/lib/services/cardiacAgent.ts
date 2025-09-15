@@ -15,9 +15,9 @@ interface AgentResponse {
 interface PatientContext {
   patientId: string;
   name: string;
-  email?: string;
-  mobile?: string;
-  medicalHistory?: string[];
+  email: string;
+  mobile: string;
+  medicalHistory: string[];
 }
 
 class CardiacAgentService {
