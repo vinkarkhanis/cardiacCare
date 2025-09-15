@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Heart, Activity, User, Sparkles, Menu, X, BarChart3, Bell, LogOut } from 'lucide-react'
 import HeartWithBeat from '@/components/HeartWithBeat'
+import MessageCard from '@/components/MessageCard'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
@@ -59,25 +60,56 @@ function MainApp() {
     setInputMessage('')
     setIsTyping(true)
 
-    // Simulate AI response with user context
-    setTimeout(() => {
-      const responses = [
-        `Thank you for sharing that with me, ${user?.first_name}. Based on what you&apos;ve told me, I&apos;d recommend monitoring your symptoms closely. Would you like me to help you track your daily vitals?`,
-        `I understand your concern, ${user?.first_name}. Given your history of ${user?.patient_problems}, it&apos;s important to stay on top of your heart health. Have you been taking your medications as prescribed?`,
-        `That&apos;s great to hear, ${user?.first_name}! Maintaining a positive outlook is wonderful for your heart health. Remember to continue with your prescribed exercise routine and let me know if you have any questions.`,
-        `I&apos;m here to support you through this, ${user?.first_name}. Heart health can feel overwhelming sometimes, but you&apos;re taking the right steps by staying engaged with your care. What would be most helpful for you right now?`
-      ]
+    try {
+      // Send message to the actual cardiac care agent
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: inputMessage,
+          patientContext: {
+            patientId: user?.patientId,
+            name: `${user?.first_name} ${user?.last_name}`,
+            email: user?.email,
+            mobile: user?.mobile_number,
+            medicalHistory: user?.patient_problems ? [user.patient_problems] : undefined
+          }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to get response: ${response.status}`)
+      }
+
+      const data = await response.json()
       
-      const assistantMessage: Message = {
+      if (data.success) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: data.message,
+          role: 'assistant',
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, assistantMessage])
+      } else {
+        throw new Error(data.error || 'Failed to get agent response')
+      }
+    } catch (error) {
+      console.error('Error sending message to cardiac agent:', error)
+      
+      // Fallback message if the agent is unavailable
+      const fallbackMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: responses[Math.floor(Math.random() * responses.length)],
+        content: `I apologize, ${user?.first_name}, but I'm currently experiencing some technical difficulties. Please try again in a moment, or contact your healthcare provider if you have urgent concerns.`,
         role: 'assistant',
         timestamp: new Date()
       }
-
-      setMessages(prev => [...prev, assistantMessage])
+      setMessages(prev => [...prev, fallbackMessage])
+    } finally {
       setIsTyping(false)
-    }, 2000)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -287,54 +319,14 @@ function MainApp() {
             <div className="flex flex-col h-full">
               {/* Messages */}
                                 {/* Messages */}
-              <div className="flex-1 overflow-y-auto chat-scrollbar px-6 py-4 space-y-4" role="log" aria-live="polite" aria-label="Conversation with cardiac health assistant">
+              <div className="flex-1 overflow-y-auto chat-scrollbar px-6 py-4 space-y-6" role="log" aria-live="polite" aria-label="Conversation with cardiac health assistant">
                 <AnimatePresence>
                   {messages.map((message, index) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className={cn(
-                        "flex",
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      )}
-                    >
-                      <div className={cn(
-                        "flex max-w-xs lg:max-w-md xl:max-w-lg",
-                        message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                      )}>
-                        {/* Avatar */}
-                        <div className={cn(
-                          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-                          message.role === 'user' 
-                            ? 'bg-medical-500 ml-3' 
-                            : 'bg-gradient-to-br from-accent-500 to-medical-500 mr-3'
-                        )}>
-                          {message.role === 'user' ? (
-                            <User className="w-4 h-4 text-white" />
-                          ) : (
-                            <HeartWithBeat size="sm" heartColor="text-white" beatColor="text-red-400" />
-                          )}
-                        </div>
-
-                        {/* Message bubble */}
-                        <div className={cn(
-                          "px-4 py-3 rounded-2xl shadow-sm",
-                          message.role === 'user'
-                            ? 'bg-medical-500 text-white rounded-br-md'
-                            : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md'
-                        )}>
-                          <p className="text-sm leading-relaxed">{message.content}</p>
-                          <p className={cn(
-                            "text-xs mt-1",
-                            message.role === 'user' ? 'text-calm-100' : 'text-gray-500'
-                          )}>
-                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
+                    <MessageCard 
+                      key={message.id} 
+                      message={message}
+                      isLatest={index === messages.length - 1}
+                    />
                   ))}
                 </AnimatePresence>
 
@@ -347,15 +339,26 @@ function MainApp() {
                       exit={{ opacity: 0, y: -20 }}
                       className="flex justify-start"
                     >
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-gradient-to-br from-accent-500 to-medical-500 rounded-full flex items-center justify-center mr-3">
+                      <div className="flex max-w-xs lg:max-w-md xl:max-w-2xl">
+                        <div className="w-10 h-10 bg-gradient-to-br from-accent-500 to-medical-500 rounded-full flex items-center justify-center mr-3 shadow-sm">
                           <HeartWithBeat size="sm" heartColor="text-white" beatColor="text-red-400" />
                         </div>
-                        <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-md">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md shadow-sm">
+                          <div className="px-4 py-2 border-b border-gray-100">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-700">Cardiac Care Assistant</span>
+                              <Activity className="w-3 h-3 text-green-500 animate-pulse" />
+                            </div>
+                          </div>
+                          <div className="px-4 py-3">
+                            <div className="flex items-center space-x-2 text-sm text-gray-500">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-medical-400 rounded-full animate-pulse"></div>
+                                <div className="w-2 h-2 bg-medical-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                <div className="w-2 h-2 bg-medical-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                              </div>
+                              <span>Analyzing your question...</span>
+                            </div>
                           </div>
                         </div>
                       </div>
