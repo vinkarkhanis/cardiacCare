@@ -40,3 +40,8 @@ logs
 
 # Test files
 test-auth.md
+test-*.js
+test-*.mjs
+scripts/test-*.js
+*DIAGNOSTIC_REPORT.md
+*SETUP_GUIDE.md
