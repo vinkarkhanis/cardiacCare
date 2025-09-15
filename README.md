@@ -1,4 +1,4 @@
-# 🫀 CardiacCare Health Agent
+# 🫀 Cardiac Care Health Agent
 
 A modern, patient-friendly React/Next.js application designed specifically for cardiac patients to interact with an AI health assistant. Built with healthcare-appropriate design principles, comprehensive patient authentication, and real-time health management features.
 
