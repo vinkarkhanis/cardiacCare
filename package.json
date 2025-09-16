@@ -2,11 +2,19 @@
   "name": "cardiac-health-agent-ui",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "node server.js",
+    "start:next": "next start",
+    "lint": "next lint",
+    "postinstall": "npm run build",
+    "azure:start": "node server.js",
+    "health": "curl http://localhost:8080/health || echo 'Health check failed'"
   },
   "dependencies": {
     "@azure/ai-projects": "^1.0.0",

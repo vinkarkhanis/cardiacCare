@@ -2,8 +2,8 @@ import { CosmosClient, Database, Container } from '@azure/cosmos'
 
 const endpoint = process.env.COSMOS_DB_ENDPOINT
 const key = process.env.COSMOS_DB_KEY
-const databaseId = 'patient_data'
-const containerId = 'patient_data'
+const databaseId = process.env.COSMOS_DB_DATABASE_NAME || 'patient_data'
+const containerId = process.env.COSMOS_DB_CONTAINER_NAME || 'patient_data'
 
 if (!endpoint || !key) {
   throw new Error('Azure Cosmos DB configuration is missing. Please set COSMOS_DB_ENDPOINT and COSMOS_DB_KEY environment variables.')

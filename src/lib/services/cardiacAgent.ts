@@ -25,17 +25,21 @@ class CardiacAgentService {
   private projectClient: AIProjectClient;
 
   constructor() {
-    // Use the single orchestration agent that handles all routing
-    this.orchestrationAgentId = 'asst_t5VlAQIahpzVTRn4igahAXJO';
+    // Use the orchestration agent ID from environment variables
+    this.orchestrationAgentId = process.env.AZURE_AI_ORCHESTRATION_AGENT_ID || 'asst_t5VlAQIahpzVTRn4igahAXJO';
     
-    // Initialize Azure AI Projects client using the exact same working config
+    // Build Azure project endpoint from environment variables
+    const azureProjectEndpoint = this.buildAzureProjectEndpoint();
+    
+    // Initialize Azure AI Projects client using environment configuration
     this.projectClient = new AIProjectClient(
-      process.env.AZURE_PROJECT_ENDPOINT || 'https://cardiac-care-resource.services.ai.azure.com/api/projects/cardiac-care',
+      azureProjectEndpoint,
       new DefaultAzureCredential()
     );
 
     console.log('🏥 CardiacAgentService initialized with Orchestration Agent');
     console.log('🤖 Orchestration Agent ID:', this.orchestrationAgentId);
+    console.log('🔗 Azure Project Endpoint:', azureProjectEndpoint);
     console.log('🔀 Single agent handles all routing to specialists');
   }
 
@@ -152,6 +156,24 @@ class CardiacAgentService {
     }
 
     return simpleMessage;
+  }
+
+  /**
+   * Build Azure project endpoint from environment variables
+   */
+  private buildAzureProjectEndpoint(): string {
+    const subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
+    const resourceGroupName = process.env.AZURE_RESOURCE_GROUP_NAME;
+    const projectName = process.env.AZURE_PROJECT_NAME;
+    
+    if (subscriptionId && resourceGroupName && projectName) {
+      // Build the proper Azure AI Foundry project endpoint
+      return `https://cardiac-care-resource.services.ai.azure.com/api/projects/${projectName}`;
+    }
+    
+    // Fallback to default endpoint if environment variables are not set
+    console.warn('⚠️ Using fallback Azure project endpoint. Set AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP_NAME, and AZURE_PROJECT_NAME for proper configuration.');
+    return 'https://cardiac-care-resource.services.ai.azure.com/api/projects/cardiac-care';
   }
 
   /**
