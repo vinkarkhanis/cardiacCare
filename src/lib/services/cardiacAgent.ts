@@ -25,6 +25,14 @@ class CardiacAgentService {
   private projectClient: AIProjectClient;
 
   constructor() {
+    // Debug environment variables
+    console.log('🔍 ENVIRONMENT VARIABLE DEBUG:');
+    console.log('   AZURE_AI_ORCHESTRATION_AGENT_ID:', process.env.AZURE_AI_ORCHESTRATION_AGENT_ID || 'NOT SET');
+    console.log('   AZURE_PROJECT_NAME:', process.env.AZURE_PROJECT_NAME || 'NOT SET');
+    console.log('   AZURE_RESOURCE_GROUP_NAME:', process.env.AZURE_RESOURCE_GROUP_NAME || 'NOT SET');
+    console.log('   AZURE_SUBSCRIPTION_ID:', process.env.AZURE_SUBSCRIPTION_ID || 'NOT SET');
+    console.log('   AZURE_AI_FOUNDRY_API_KEY:', process.env.AZURE_AI_FOUNDRY_API_KEY ? 'SET' : 'NOT SET');
+    
     // Use the orchestration agent ID from environment variables
     this.orchestrationAgentId = process.env.AZURE_AI_ORCHESTRATION_AGENT_ID || 'asst_t5VlAQIahpzVTRn4igahAXJO';
     
@@ -166,14 +174,22 @@ class CardiacAgentService {
     const resourceGroupName = process.env.AZURE_RESOURCE_GROUP_NAME;
     const projectName = process.env.AZURE_PROJECT_NAME;
     
+    console.log('🔍 Building Azure Project Endpoint:');
+    console.log('   Subscription ID:', subscriptionId || 'NOT SET');
+    console.log('   Resource Group:', resourceGroupName || 'NOT SET');
+    console.log('   Project Name:', projectName || 'NOT SET');
+    
     if (subscriptionId && resourceGroupName && projectName) {
-      // Build the proper Azure AI Foundry project endpoint
-      return `https://cardiac-care-resource.services.ai.azure.com/api/projects/${projectName}`;
+      const endpoint = `https://cardiac-care-resource.services.ai.azure.com/api/projects/${projectName}`;
+      console.log('✅ Built endpoint from environment variables:', endpoint);
+      return endpoint;
     }
     
     // Fallback to default endpoint if environment variables are not set
-    console.warn('⚠️ Using fallback Azure project endpoint. Set AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP_NAME, and AZURE_PROJECT_NAME for proper configuration.');
-    return 'https://cardiac-care-resource.services.ai.azure.com/api/projects/cardiac-care';
+    const fallbackEndpoint = 'https://cardiac-care-resource.services.ai.azure.com/api/projects/cardiac-care';
+    console.warn('⚠️ Using fallback Azure project endpoint:', fallbackEndpoint);
+    console.warn('⚠️ Missing environment variables. Set AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP_NAME, and AZURE_PROJECT_NAME for proper configuration.');
+    return fallbackEndpoint;
   }
 
   /**

@@ -6,6 +6,12 @@ export async function POST(request: NextRequest) {
   console.log('🌐 API CHAT ENDPOINT - NEW REQUEST');
   console.log('🌐 =================================');
   
+  // Log environment variable status for debugging
+  console.log('🔍 Environment Variables Check:');
+  console.log('   AZURE_AI_ORCHESTRATION_AGENT_ID:', process.env.AZURE_AI_ORCHESTRATION_AGENT_ID ? 'SET' : 'NOT SET');
+  console.log('   AZURE_PROJECT_NAME:', process.env.AZURE_PROJECT_NAME ? 'SET' : 'NOT SET');
+  console.log('   NODE_ENV:', process.env.NODE_ENV);
+  
   try {
     const requestBody = await request.json();
     const { message, patientContext } = requestBody;
