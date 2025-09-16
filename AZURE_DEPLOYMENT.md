@@ -1,93 +1,103 @@
 # Azure Web App Deployment Guide
 
-## 🚀 Fixed Issues
+## � **CRITICAL: Deployment Issues Fixed**
 
 The deployment failure was caused by:
-1. **Port Configuration**: Azure expects port 8080, Next.js was using 3000
-2. **Missing Standalone Output**: Next.js wasn't configured for containerized deployment
-3. **No Custom Server**: Azure Web App needs explicit server configuration
-4. **Missing IIS Configuration**: Web.config required for Azure App Service
+1. **Build Process**: Azure wasn't building the Next.js app properly
+2. **Script Configuration**: Wrong startup script being used
+3. **Environment Setup**: Missing production build configuration
 
-## ✅ Implemented Fixes
+## ✅ **Latest Fixes Applied**
 
-### 1. **Updated next.config.js**
-- Enabled `output: 'standalone'` for Azure deployment
-- Added performance optimizations
-- Configured security headers
-- Added environment variable handling
+### 1. **Fixed Package.json Scripts**
+- ✅ Removed problematic `postinstall` script
+- ✅ Added `azure:build` for proper Azure deployment
+- ✅ Ensured `start` script uses `node server.js`
 
-### 2. **Created server.js**
-- Custom Node.js server that listens on port 8080
-- Health check endpoint at `/health`
-- Proper error handling and graceful shutdown
-- Azure Web App optimized logging
+### 2. **Enhanced Server.js**
+- ✅ Auto-detection of built application
+- ✅ Automatic build process if needed
+- ✅ Better error handling and logging
+- ✅ Fallback to development mode if build fails
 
-### 3. **Updated package.json**
-- Changed start script to use `node server.js`
-- Added `postinstall` build script for Azure deployment
-- Added Node.js version requirement (>=20.0.0)
-- Added health check script
+### 3. **Azure Deployment Scripts**
+- ✅ Added `.deployment` file for Azure
+- ✅ Added `deploy.sh` for proper build process
+- ✅ Added `startup.sh` for container startup
 
-### 4. **Added web.config**
-- IISNode configuration for Azure App Service
-- URL rewriting rules for Next.js routes
-- Security headers for healthcare compliance
-- Static file handling optimization
+## 🔧 **Azure Web App Configuration Required**
 
-## 🔧 Azure Web App Configuration
-
-In your Azure Web App Settings, ensure these **Application Settings** are configured:
-
+### **Application Settings** (Environment Variables)
 ```
 NODE_ENV=production
-PORT=8080
+WEBSITES_PORT=8080
 WEBSITE_NODE_DEFAULT_VERSION=~20
 SCM_DO_BUILD_DURING_DEPLOYMENT=true
 
-# Your existing environment variables
-AZURE_AI_PROJECT_CONNECTION_STRING=your_connection_string
-COSMOS_DB_CONNECTION_STRING=your_cosmos_connection_string
-COSMOS_DB_DATABASE_NAME=cardiacPatients
+# Your Azure AI Foundry variables
+AZURE_AI_FOUNDRY_API_KEY=your_api_key
+AZURE_AI_ORCHESTRATION_AGENT_ID=asst_t5VlAQIahpzVTRn4igahAXJO
+AZURE_PROJECT_NAME=cardiac-care
+AZURE_RESOURCE_GROUP_NAME=your_resource_group
+AZURE_SUBSCRIPTION_ID=your_subscription_id
+OPENAI_API_VERSION=2024-12-01-preview
+
+# Cosmos DB variables
+COSMOS_DB_ENDPOINT=your_cosmos_endpoint
+COSMOS_DB_KEY=your_cosmos_key
+COSMOS_DB_DATABASE_NAME=CardiacHealthDB
 COSMOS_DB_CONTAINER_NAME=patients
-ORCHESTRATION_AGENT_ID=asst_t5VlAQIahpzVTRn4igahAXJO
 ```
 
-## 🚀 Deployment Steps
+### **Startup Command** (In Azure Portal)
+Set the startup command to:
+```
+node server.js
+```
 
-1. **Commit and push these changes:**
+## 🚀 **Deployment Process**
+
+1. **Push to Repository:**
    ```bash
    git add .
-   git commit -m "Fix Azure Web App deployment configuration"
+   git commit -m "Fix Azure deployment configuration"
    git push origin main
    ```
 
-2. **Azure will automatically redeploy** with the new configuration
+2. **Azure will automatically:**
+   - Pull the code
+   - Run `npm install --production`
+   - Run `npm run build` (via deploy.sh)
+   - Start with `node server.js`
 
-3. **Monitor deployment logs** in Azure Portal > Deployment Center
+3. **Monitor Logs:**
+   - Check Azure Portal → Deployment Center → Logs
+   - Check Application Logs for runtime issues
 
-4. **Test the application:**
-   - Main app: `https://cardiac-care-hchkdngacbh6ehdh.eastus2-01.azurewebsites.net`
-   - Health check: `https://cardiac-care-hchkdngacbh6ehdh.eastus2-01.azurewebsites.net/health`
+## 🔍 **Troubleshooting Steps**
 
-## 🎯 Key Changes Summary
+### **If still getting "next: not found" error:**
 
-- ✅ **Port 8080**: Server now correctly listens on Azure's required port
-- ✅ **Standalone Build**: Optimized for containerized deployment  
-- ✅ **Custom Server**: Handles Azure Web App requirements
-- ✅ **IIS Integration**: Proper web.config for Azure App Service
-- ✅ **Health Monitoring**: Built-in health check endpoint
-- ✅ **Error Handling**: Graceful error responses and logging
-- ✅ **Security Headers**: Healthcare-appropriate security configuration
+1. **Check Startup Command in Azure Portal:**
+   - Go to Configuration → General Settings
+   - Set Startup Command: `node server.js`
 
-Your cardiac care application should now deploy successfully on Azure Web App! 🫀
+2. **Enable Logging:**
+   - Go to App Service logs
+   - Enable Application Logging (Filesystem)
+   - Set to "Information" level
 
-## 🔍 Troubleshooting
+3. **Verify Build Process:**
+   - Check Deployment Center logs
+   - Ensure `npm run build` completed successfully
+   - Verify `.next` folder exists after deployment
 
-If you still encounter issues:
-
-1. **Check Application Logs** in Azure Portal
-2. **Verify Environment Variables** are set correctly
-3. **Test Health Endpoint**: `/health` should return 200 OK
-4. **Monitor Resource Usage** in Azure metrics
-
-The application is now properly configured for Azure Web App hosting with all necessary optimizations for healthcare applications.
+### **Manual Build Verification:**
+If automatic build fails, you can manually build:
+```bash
+# SSH into Azure Web App (Advanced Tools → SSH)
+cd /home/site/wwwroot
+npm install
+npm run build
+node server.js
+```

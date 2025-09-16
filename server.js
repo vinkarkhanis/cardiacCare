@@ -1,6 +1,8 @@
 const { createServer } = require('http')
 const { parse } = require('url')
 const next = require('next')
+const path = require('path')
+const fs = require('fs')
 
 // Determine environment and configuration
 const dev = process.env.NODE_ENV !== 'production'
@@ -12,6 +14,39 @@ console.log(`📍 Environment: ${dev ? 'development' : 'production'}`)
 console.log(`🌐 Hostname: ${hostname}`)
 console.log(`🔌 Port: ${port}`)
 console.log(`🏥 Node.js Version: ${process.version}`)
+console.log(`📁 Working Directory: ${process.cwd()}`)
+
+// Check if .next directory exists (built app)
+const nextDir = path.join(process.cwd(), '.next')
+const hasBuiltApp = fs.existsSync(nextDir)
+console.log(`📦 Next.js built app exists: ${hasBuiltApp}`)
+
+if (!dev && !hasBuiltApp) {
+  console.log('⚠️ No built Next.js app found in production mode.')
+  console.log('📝 Please ensure "npm run build" was executed during deployment.')
+  console.log('🔍 Checking for package.json and dependencies...')
+  
+  // Check if we can build
+  if (fs.existsSync(path.join(process.cwd(), 'package.json'))) {
+    try {
+      console.log('🔨 Attempting to build now...')
+      const { execSync } = require('child_process')
+      execSync('npm run build', { stdio: 'inherit', timeout: 300000 }) // 5 minute timeout
+      console.log('✅ Build completed successfully')
+    } catch (error) {
+      console.error('❌ Build failed:', error.message)
+      console.log('📦 Listing directory contents:')
+      console.log(fs.readdirSync(process.cwd()))
+      
+      // Exit gracefully instead of crashing
+      console.log('🚨 Starting in development mode as fallback...')
+      dev = true
+    }
+  } else {
+    console.error('❌ No package.json found. Cannot build application.')
+    process.exit(1)
+  }
+}
 
 // Create the Next.js application
 const app = next({ 

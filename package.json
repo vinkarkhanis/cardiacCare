@@ -12,7 +12,7 @@
     "start": "node server.js",
     "start:next": "next start",
     "lint": "next lint",
-    "postinstall": "npm run build",
+    "azure:build": "npm ci && npm run build",
     "azure:start": "node server.js",
     "health": "curl http://localhost:8080/health || echo 'Health check failed'"
   },
