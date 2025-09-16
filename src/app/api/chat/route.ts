@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     const userMessageTimestamp = new Date().toISOString();
     
-    // Send message to the cardiac care agent
-    const agentResponse = await cardiacAgent.sendMessage(message, patientContext);
+    // Send message to the cardiac care agent with conversation context
+    const agentResponse = await cardiacAgent.sendMessage(message, patientContext, conversationId);
 
     console.log('📬 =================================');
     console.log('📬 AGENT RESPONSE RECEIVED');

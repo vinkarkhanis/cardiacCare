@@ -45,6 +45,11 @@ interface PatientContext {
 class CardiacAgentService {
   private readonly orchestrationAgentId: string;
   private projectClient: AIProjectClient;
+  
+  // Thread management for conversation continuity
+  private conversationThreads: Map<string, string> = new Map();
+  private threadLastUsed: Map<string, number> = new Map();
+  private readonly THREAD_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
   constructor() {
     // Debug environment variables
@@ -73,11 +78,88 @@ class CardiacAgentService {
   }
 
   /**
-   * Send message using the exact same working method as orchestration service
+   * Get or create a thread for a specific conversation
+   * Maintains one thread per conversation for context continuity
+   */
+  private async getOrCreateThreadForConversation(conversationId: string): Promise<string> {
+    // Clean up expired threads first
+    this.cleanupExpiredThreads();
+    
+    // Check if we already have a thread for this conversation
+    const existingThreadId = this.conversationThreads.get(conversationId);
+    if (existingThreadId) {
+      // Update last used timestamp
+      this.threadLastUsed.set(conversationId, Date.now());
+      console.log(`♻️ Reusing existing thread for conversation ${conversationId}: ${existingThreadId}`);
+      return existingThreadId;
+    }
+    
+    // Create new thread for this conversation
+    try {
+      const thread = await this.projectClient.agents.threads.create();
+      this.conversationThreads.set(conversationId, thread.id);
+      this.threadLastUsed.set(conversationId, Date.now());
+      console.log(`🆕 Created new thread for conversation ${conversationId}: ${thread.id}`);
+      return thread.id;
+    } catch (error) {
+      console.error(`❌ Failed to create thread for conversation ${conversationId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clean up threads that haven't been used recently
+   * Prevents memory leaks and maintains performance
+   */
+  private cleanupExpiredThreads(): void {
+    const now = Date.now();
+    const expiredConversations: string[] = [];
+    
+    for (const [conversationId, lastUsed] of this.threadLastUsed.entries()) {
+      if (now - lastUsed > this.THREAD_TIMEOUT_MS) {
+        expiredConversations.push(conversationId);
+      }
+    }
+    
+    for (const conversationId of expiredConversations) {
+      const threadId = this.conversationThreads.get(conversationId);
+      this.conversationThreads.delete(conversationId);
+      this.threadLastUsed.delete(conversationId);
+      console.log(`🧹 Cleaned up expired thread for conversation ${conversationId}: ${threadId}`);
+    }
+    
+    if (expiredConversations.length > 0) {
+      console.log(`🧹 Cleaned up ${expiredConversations.length} expired threads`);
+    }
+  }
+
+  /**
+   * Build conversation context from previous messages
+   * Helps maintain context when reusing threads
+   */
+  private buildConversationContext(message: string, patientContext?: PatientContext): string {
+    let contextMessage = `${message}`;
+    
+    if (patientContext) {
+      contextMessage = `Patient: ${patientContext.name}`;
+      
+      if (patientContext.medicalHistory && patientContext.medicalHistory.length > 0) {
+        contextMessage += ` (Medical History: ${patientContext.medicalHistory.join(', ')})`;
+      }
+      
+      contextMessage += `\n\nQuestion: ${message}`;
+    }
+
+    return contextMessage;
+  }
+
+  /**
+   * Send message using conversation-aware thread management
    */
   async sendMessage(
     message: string,
-    patientContext?: PatientContext
+    patientContext?: PatientContext,
+    conversationId?: string
   ): Promise<AgentResponse> {
     try {
       console.log('🚀 Processing cardiac health request via Orchestration Agent');
@@ -89,26 +171,34 @@ class CardiacAgentService {
 
       console.log('🤖 Calling Azure AI Foundry Orchestration Agent');
       
-      // Build simple message with just patient context and question
-      const simpleMessage = this.buildOrchestrationMessage(message, patientContext);
+      // Build conversation-aware message with context
+      const contextualMessage = this.buildConversationContext(message, patientContext);
 
       // EXACT SAME WORKING METHOD AS ORCHESTRATION SERVICE
       console.log(`📤 AZURE AI FOUNDRY AGENT CALL TO ${this.orchestrationAgentId}:`, message.substring(0, 50) + '...');
       
-      // Create thread using working Azure AI Foundry agent API
-      const thread = await this.projectClient.agents.threads.create();
-      console.log('🧵 Created Azure AI Foundry agent thread:', thread.id);
+      // ENHANCED: Get or create thread for conversation continuity
+      let threadId: string;
+      if (conversationId) {
+        threadId = await this.getOrCreateThreadForConversation(conversationId);
+        console.log(`🧵 Using existing thread for conversation ${conversationId}: ${threadId}`);
+      } else {
+        // Create new thread for one-off questions
+        const thread = await this.projectClient.agents.threads.create();
+        threadId = thread.id;
+        console.log('🧵 Created new thread for one-off question:', threadId);
+      }
 
       // Add message using working API (3 parameters: threadId, role, content)
-      await this.projectClient.agents.messages.create(thread.id, 'user', simpleMessage);
+      await this.projectClient.agents.messages.create(threadId, 'user', contextualMessage);
       console.log('📝 Message added to Azure AI Foundry agent thread');
 
       // Start run using working API (2 parameters: threadId, agentId)
-      const run = await this.projectClient.agents.runs.create(thread.id, this.orchestrationAgentId);
+      const run = await this.projectClient.agents.runs.create(threadId, this.orchestrationAgentId);
       console.log('🏃 Started Azure AI Foundry agent run:', run.id);
 
       // Wait for completion with timeout - EXACT SAME AS WORKING CODE
-      let runStatus = await this.projectClient.agents.runs.get(thread.id, run.id);
+      let runStatus = await this.projectClient.agents.runs.get(threadId, run.id);
       let attempts = 0;
       const maxAttempts = 30;
 
@@ -123,14 +213,14 @@ class CardiacAgentService {
         }
         
         await new Promise(resolve => setTimeout(resolve, 1000));
-        runStatus = await this.projectClient.agents.runs.get(thread.id, run.id);
+        runStatus = await this.projectClient.agents.runs.get(threadId, run.id);
         attempts++;
         console.log(`⏳ Azure AI Foundry agent run status: ${runStatus.status} (attempt ${attempts}/${maxAttempts})`);
       }
 
       if (runStatus.status === 'completed') {
         // Get the Azure AI Foundry agent's response - EXACT SAME AS WORKING CODE
-        const messages = await this.projectClient.agents.messages.list(thread.id);
+        const messages = await this.projectClient.agents.messages.list(threadId);
         
         // Handle PagedAsyncIterableIterator - EXACT SAME AS WORKING CODE
         for await (const agentMessage of messages) {
@@ -214,32 +304,45 @@ class CardiacAgentService {
   }
 
   /**
-   * Build simple message with just patient context and question - no instructions
-   */
-  private buildOrchestrationMessage(message: string, patientContext?: PatientContext): string {
-    let simpleMessage = `${message}`;
-    
-    if (patientContext) {
-      simpleMessage = `Patient: ${patientContext.name}`;
-      
-      if (patientContext.medicalHistory && patientContext.medicalHistory.length > 0) {
-        simpleMessage += ` (Medical History: ${patientContext.medicalHistory.join(', ')})`;
-      }
-      
-      simpleMessage += `\n\nQuestion: ${message}`;
-    }
-
-    return simpleMessage;
-  }
-
-  /**
    * Get agent status
    */
   async getAgentStatus(): Promise<{ status: string; message: string }> {
     return {
       status: 'active',
-      message: 'Cardiac Care Orchestration Agent ready - Routes to specialized cardiac agents automatically'
+      message: 'Cardiac Care Orchestration Agent ready - Routes to specialized cardiac agents automatically with conversation continuity'
     };
+  }
+
+  /**
+   * Get thread management statistics
+   */
+  getThreadStats(): { activeThreads: number; totalConversations: number; oldestThread: string | null } {
+    const now = Date.now();
+    let oldestThread: string | null = null;
+    let oldestTime = now;
+
+    for (const [conversationId, lastUsed] of this.threadLastUsed.entries()) {
+      if (lastUsed < oldestTime) {
+        oldestTime = lastUsed;
+        oldestThread = conversationId;
+      }
+    }
+
+    return {
+      activeThreads: this.conversationThreads.size,
+      totalConversations: this.threadLastUsed.size,
+      oldestThread: oldestThread ? `${oldestThread} (${Math.round((now - oldestTime) / 1000 / 60)} min ago)` : null
+    };
+  }
+
+  /**
+   * Force cleanup of all threads (useful for maintenance)
+   */
+  clearAllThreads(): void {
+    const clearedCount = this.conversationThreads.size;
+    this.conversationThreads.clear();
+    this.threadLastUsed.clear();
+    console.log(`🧹 Force cleared ${clearedCount} conversation threads`);
   }
 }
 
