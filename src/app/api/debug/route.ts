@@ -8,13 +8,16 @@ export async function GET(request: NextRequest) {
   try {
     // Get all environment variables (filter sensitive ones for display)
     const envVars = {
-      // Azure AI Foundry Variables
+      // Azure AI Foundry Variables - CORRECT ONES
       AZURE_AI_FOUNDRY_API_KEY: process.env.AZURE_AI_FOUNDRY_API_KEY ? '***SET***' : 'NOT SET',
+      AZURE_AI_FOUNDRY_PROJECT_ENDPOINT: process.env.AZURE_AI_FOUNDRY_PROJECT_ENDPOINT || 'NOT SET',
       AZURE_AI_ORCHESTRATION_AGENT_ID: process.env.AZURE_AI_ORCHESTRATION_AGENT_ID || 'NOT SET',
-      AZURE_PROJECT_NAME: process.env.AZURE_PROJECT_NAME || 'NOT SET',
-      AZURE_RESOURCE_GROUP_NAME: process.env.AZURE_RESOURCE_GROUP_NAME || 'NOT SET',
-      AZURE_SUBSCRIPTION_ID: process.env.AZURE_SUBSCRIPTION_ID || 'NOT SET',
       OPENAI_API_VERSION: process.env.OPENAI_API_VERSION || 'NOT SET',
+      
+      // Legacy variables (these are no longer used)
+      AZURE_PROJECT_NAME: process.env.AZURE_PROJECT_NAME || 'NOT SET (Legacy)',
+      AZURE_RESOURCE_GROUP_NAME: process.env.AZURE_RESOURCE_GROUP_NAME || 'NOT SET (Legacy)',
+      AZURE_SUBSCRIPTION_ID: process.env.AZURE_SUBSCRIPTION_ID || 'NOT SET (Legacy)',
       
       // Cosmos DB Variables
       COSMOS_DB_ENDPOINT: process.env.COSMOS_DB_ENDPOINT ? '***SET***' : 'NOT SET',

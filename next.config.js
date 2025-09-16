@@ -16,12 +16,10 @@ const nextConfig = {
   
   // Configure environment variables for Azure
   env: {
-    // Azure AI Foundry configuration
+    // Azure AI Foundry configuration - CORRECT VARIABLES
     AZURE_AI_FOUNDRY_API_KEY: process.env.AZURE_AI_FOUNDRY_API_KEY,
+    AZURE_AI_FOUNDRY_PROJECT_ENDPOINT: process.env.AZURE_AI_FOUNDRY_PROJECT_ENDPOINT,
     AZURE_AI_ORCHESTRATION_AGENT_ID: process.env.AZURE_AI_ORCHESTRATION_AGENT_ID,
-    AZURE_PROJECT_NAME: process.env.AZURE_PROJECT_NAME,
-    AZURE_RESOURCE_GROUP_NAME: process.env.AZURE_RESOURCE_GROUP_NAME,
-    AZURE_SUBSCRIPTION_ID: process.env.AZURE_SUBSCRIPTION_ID,
     OPENAI_API_VERSION: process.env.OPENAI_API_VERSION,
     
     // Cosmos DB configuration
