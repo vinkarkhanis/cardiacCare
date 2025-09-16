@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cardiacAgent } from '@/lib/services/cardiacAgent';
+import { 
+  createChatConversation, 
+  saveChatExchange, 
+  getPatientChatConversations 
+} from '@/lib/database/chatConversations';
 
 export async function POST(request: NextRequest) {
   console.log('\n🌐 =================================');
@@ -16,12 +21,13 @@ export async function POST(request: NextRequest) {
   
   try {
     const requestBody = await request.json();
-    const { message, patientContext } = requestBody;
+    const { message, patientContext, conversationId } = requestBody;
     
     console.log('📥 Incoming request data:');
     console.log('📝 Raw request body:', JSON.stringify(requestBody, null, 2));
     console.log('💬 Message:', message);
     console.log('👤 Patient context:', patientContext);
+    console.log('🗨️ Conversation ID:', conversationId || 'New conversation');
     console.log('');
 
     if (!message || typeof message !== 'string') {
@@ -35,17 +41,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 });
     }
 
+    if (!patientContext?.patientId) {
+      console.log('❌ Invalid request - patient context missing');
+      const errorResponse = { error: 'Patient context with patientId is required' };
+      return NextResponse.json(errorResponse, { status: 400 });
+    }
+
     console.log('✅ Request validation passed');
     console.log('📊 Processing chat request:');
     console.log('   📏 Message length:', message.length);
     console.log('   🏥 Has patient context:', !!patientContext);
+    console.log('   👤 Patient ID:', patientContext.patientId);
     console.log('   ⏰ Timestamp:', new Date().toISOString());
     console.log('');
+
+    // Handle conversation creation/continuation
+    let currentConversationId = conversationId;
+    
+    if (!currentConversationId) {
+      console.log('🆕 Creating new conversation in patient_chat container...');
+      const newConversationResponse = await createChatConversation({
+        patientId: patientContext.patientId,
+        initialMessage: message
+      });
+      
+      if (!newConversationResponse.success) {
+        console.log('❌ Failed to create conversation:', newConversationResponse.error);
+        // Continue without conversation storage if it fails
+      } else {
+        currentConversationId = newConversationResponse.conversation?.conversationId;
+        console.log('✅ New conversation created in patient_chat:', currentConversationId);
+      }
+    }
 
     console.log('🤖 =================================');
     console.log('🤖 CALLING CARDIAC AGENT SERVICE');
     console.log('🤖 =================================');
 
+    const startTime = Date.now();
+    const userMessageTimestamp = new Date().toISOString();
+    
     // Send message to the cardiac care agent
     const agentResponse = await cardiacAgent.sendMessage(message, patientContext);
 
@@ -81,10 +116,53 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Agent response successful, preparing client response');
     
+    const processingTime = Date.now() - startTime;
+    const aiResponseTimestamp = new Date().toISOString();
+    console.log('⏱️ Total processing time:', processingTime, 'ms');
+
+    // Save complete exchange (user + AI) to patient_chat container
+    if (currentConversationId && agentResponse.message) {
+      console.log('💾 Saving complete exchange to patient_chat container...');
+      const saveExchangeResponse = await saveChatExchange({
+        conversationId: currentConversationId,
+        patientId: patientContext.patientId,
+        userMessage: {
+          content: message,
+          timestamp: userMessageTimestamp
+        },
+        aiResponse: {
+          content: agentResponse.message,
+          timestamp: aiResponseTimestamp,
+          processingTime,
+          agentUsed: 'CardiacOrchestrationAgent',
+          success: true
+        },
+        metadata: {
+          patientContext: {
+            name: patientContext.name,
+            email: patientContext.email,
+            mobile: patientContext.mobile,
+            medicalHistory: patientContext.medicalHistory
+          },
+          tags: ['api-chat'],
+          summary: `Exchange: ${message.substring(0, 50)}...`
+        }
+      });
+      
+      if (!saveExchangeResponse.success) {
+        console.log('⚠️ Failed to save exchange to patient_chat:', saveExchangeResponse.error);
+        // Continue even if storage fails
+      } else {
+        console.log('✅ Complete exchange saved to patient_chat container');
+      }
+    }
+    
     const clientResponse = {
       success: true,
       message: agentResponse.message,
-      timestamp: new Date().toISOString()
+      conversationId: currentConversationId, // Return conversation ID to client
+      timestamp: new Date().toISOString(),
+      processingTime
     };
 
     console.log('📤 =================================');

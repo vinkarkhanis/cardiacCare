@@ -1,0 +1,404 @@
+import { getDatabase } from './cosmos'
+import { 
+  Conversation, 
+  ConversationMessage, 
+  CreateConversationData, 
+  SaveMessageData,
+  ConversationResponse,
+  MessagesResponse,
+  ConversationListResponse,
+  ConversationHistory
+} from '../types/conversation'
+
+// Generate unique conversation ID
+export function generateConversationId(): string {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 8)
+  return `CONV-${timestamp}-${random.toUpperCase()}`
+}
+
+// Generate unique message ID
+export function generateMessageId(): string {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 6)
+  return `MSG-${timestamp}-${random.toUpperCase()}`
+}
+
+// Auto-generate conversation title from first message
+function generateConversationTitle(firstMessage: string): string {
+  const maxLength = 50
+  let title = firstMessage.trim()
+  
+  // Remove common chat prefixes
+  title = title.replace(/^(hi|hello|hey|good morning|good afternoon|good evening)[,\s]*/i, '')
+  
+  // Truncate and add ellipsis if needed
+  if (title.length > maxLength) {
+    title = title.substring(0, maxLength).trim()
+    // Find last complete word
+    const lastSpace = title.lastIndexOf(' ')
+    if (lastSpace > 20) {
+      title = title.substring(0, lastSpace)
+    }
+    title += '...'
+  }
+  
+  return title || 'New Conversation'
+}
+
+/**
+ * Create a new conversation
+ */
+export async function createConversation(data: CreateConversationData): Promise<ConversationResponse> {
+  try {
+    console.log('Creating new conversation for patient:', data.patientId)
+    const { container } = await getDatabase()
+    
+    const conversationId = generateConversationId()
+    const now = new Date().toISOString()
+    
+    const conversation: Conversation = {
+      id: conversationId,
+      conversationId,
+      patientId: data.patientId,
+      title: data.title || generateConversationTitle(data.initialMessage || 'New Conversation'),
+      startTime: now,
+      lastMessageTime: now,
+      exchangeCount: 0,
+      status: 'active',
+      tags: [],
+      type: 'conversation',
+      created_at: now,
+      updated_at: now
+    }
+    
+    console.log('Creating conversation document:', JSON.stringify(conversation, null, 2))
+    const result = await container.items.create(conversation)
+    console.log('Conversation created successfully:', result.resource?.conversationId)
+    
+    return {
+      success: true,
+      conversation: result.resource as Conversation
+    }
+    
+  } catch (error: any) {
+    console.error('Error creating conversation:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to create conversation'
+    }
+  }
+}
+
+/**
+ * Save a message to an existing conversation
+ */
+export async function saveMessage(data: SaveMessageData): Promise<ConversationResponse> {
+  try {
+    console.log('Saving message to conversation:', data.conversationId)
+    const { container } = await getDatabase()
+    
+    const messageId = generateMessageId()
+    const now = new Date().toISOString()
+    
+    // Create the message document
+    const message: ConversationMessage = {
+      id: messageId,
+      conversationId: data.conversationId,
+      patientId: data.patientId,
+      role: data.role,
+      content: data.content,
+      timestamp: now,
+      metadata: {
+        messageLength: data.content.length,
+        ...data.metadata
+      },
+      created_at: now,
+      updated_at: now
+    }
+    
+    console.log('Creating message document:', {
+      id: message.id,
+      role: message.role,
+      contentLength: message.content.length,
+      conversationId: message.conversationId
+    })
+    
+    // Save the message
+    await container.items.create(message)
+    console.log('Message saved successfully:', messageId)
+    
+    // Update conversation metadata
+    try {
+      const { resource: conversation } = await container.item(data.conversationId, data.patientId).read<Conversation>()
+      
+      if (conversation) {
+        const updatedConversation: Conversation = {
+          ...conversation,
+          lastMessageTime: now,
+          messageCount: conversation.messageCount + 1,
+          updated_at: now
+        }
+        
+        await container.item(data.conversationId, data.patientId).replace(updatedConversation)
+        console.log('Conversation metadata updated - message count:', updatedConversation.messageCount)
+      }
+    } catch (updateError) {
+      console.warn('Could not update conversation metadata:', updateError)
+      // Don't fail the whole operation if metadata update fails
+    }
+    
+    return {
+      success: true
+    }
+    
+  } catch (error: any) {
+    console.error('Error saving message:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to save message'
+    }
+  }
+}
+
+/**
+ * Get all conversations for a patient
+ */
+export async function getPatientConversations(
+  patientId: string, 
+  limit: number = 50,
+  offset: number = 0
+): Promise<ConversationListResponse> {
+  try {
+    console.log(`Getting conversations for patient: ${patientId} (limit: ${limit}, offset: ${offset})`)
+    const { container } = await getDatabase()
+    
+    const querySpec = {
+      query: `
+        SELECT * FROM c 
+        WHERE c.patientId = @patientId 
+        AND c.conversationId != null
+        ORDER BY c.lastMessageTime DESC
+        OFFSET @offset LIMIT @limit
+      `,
+      parameters: [
+        { name: '@patientId', value: patientId },
+        { name: '@offset', value: offset },
+        { name: '@limit', value: limit }
+      ]
+    }
+    
+    const { resources: conversations } = await container.items.query<Conversation>(querySpec).fetchAll()
+    console.log(`Found ${conversations.length} conversations for patient ${patientId}`)
+    
+    return {
+      success: true,
+      conversations,
+      totalCount: conversations.length
+    }
+    
+  } catch (error: any) {
+    console.error('Error getting patient conversations:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to get conversations'
+    }
+  }
+}
+
+/**
+ * Get messages for a specific conversation
+ */
+export async function getConversationMessages(
+  conversationId: string,
+  patientId: string,
+  limit: number = 100,
+  offset: number = 0
+): Promise<MessagesResponse> {
+  try {
+    console.log(`Getting messages for conversation: ${conversationId} (limit: ${limit}, offset: ${offset})`)
+    const { container } = await getDatabase()
+    
+    const querySpec = {
+      query: `
+        SELECT * FROM c 
+        WHERE c.conversationId = @conversationId 
+        AND c.patientId = @patientId
+        AND c.role != null
+        ORDER BY c.timestamp ASC
+        OFFSET @offset LIMIT @limit
+      `,
+      parameters: [
+        { name: '@conversationId', value: conversationId },
+        { name: '@patientId', value: patientId },
+        { name: '@offset', value: offset },
+        { name: '@limit', value: limit }
+      ]
+    }
+    
+    const { resources: messages } = await container.items.query<ConversationMessage>(querySpec).fetchAll()
+    console.log(`Found ${messages.length} messages for conversation ${conversationId}`)
+    
+    return {
+      success: true,
+      messages,
+      totalCount: messages.length
+    }
+    
+  } catch (error: any) {
+    console.error('Error getting conversation messages:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to get messages'
+    }
+  }
+}
+
+/**
+ * Get full conversation history (conversation + messages)
+ */
+export async function getConversationHistory(
+  conversationId: string,
+  patientId: string
+): Promise<{ success: boolean; history?: ConversationHistory; error?: string }> {
+  try {
+    console.log(`Getting full history for conversation: ${conversationId}`)
+    const { container } = await getDatabase()
+    
+    // Get conversation details
+    const { resource: conversation } = await container.item(conversationId, patientId).read<Conversation>()
+    
+    if (!conversation) {
+      return {
+        success: false,
+        error: 'Conversation not found'
+      }
+    }
+    
+    // Get all messages for this conversation
+    const messagesResponse = await getConversationMessages(conversationId, patientId, 1000) // Get up to 1000 messages
+    
+    if (!messagesResponse.success) {
+      return {
+        success: false,
+        error: messagesResponse.error
+      }
+    }
+    
+    const history: ConversationHistory = {
+      conversation,
+      messages: messagesResponse.messages || [],
+      totalMessages: messagesResponse.totalCount || 0
+    }
+    
+    console.log(`Retrieved conversation history: ${history.totalMessages} messages`)
+    
+    return {
+      success: true,
+      history
+    }
+    
+  } catch (error: any) {
+    console.error('Error getting conversation history:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to get conversation history'
+    }
+  }
+}
+
+/**
+ * Update conversation status or metadata
+ */
+export async function updateConversation(
+  conversationId: string,
+  patientId: string,
+  updates: Partial<Pick<Conversation, 'title' | 'status' | 'tags' | 'summary'>>
+): Promise<ConversationResponse> {
+  try {
+    console.log(`Updating conversation: ${conversationId}`)
+    const { container } = await getDatabase()
+    
+    const { resource: conversation } = await container.item(conversationId, patientId).read<Conversation>()
+    
+    if (!conversation) {
+      return {
+        success: false,
+        error: 'Conversation not found'
+      }
+    }
+    
+    const updatedConversation: Conversation = {
+      ...conversation,
+      ...updates,
+      updated_at: new Date().toISOString()
+    }
+    
+    const result = await container.item(conversationId, patientId).replace(updatedConversation)
+    console.log('Conversation updated successfully:', conversationId)
+    
+    return {
+      success: true,
+      conversation: result.resource as Conversation
+    }
+    
+  } catch (error: any) {
+    console.error('Error updating conversation:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to update conversation'
+    }
+  }
+}
+
+/**
+ * Delete a conversation and all its messages (soft delete by changing status)
+ */
+export async function deleteConversation(conversationId: string, patientId: string): Promise<ConversationResponse> {
+  try {
+    console.log(`Deleting conversation: ${conversationId}`)
+    
+    // Soft delete by updating status
+    const result = await updateConversation(conversationId, patientId, { 
+      status: 'archived',
+      tags: ['deleted']
+    })
+    
+    console.log('Conversation soft-deleted successfully:', conversationId)
+    return result
+    
+  } catch (error: any) {
+    console.error('Error deleting conversation:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to delete conversation'
+    }
+  }
+}
+
+/**
+ * Debug function to list all conversations
+ */
+export async function listAllConversations(): Promise<void> {
+  try {
+    console.log('=== LISTING ALL CONVERSATIONS ===')
+    const { container } = await getDatabase()
+    
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.conversationId != null ORDER BY c.lastMessageTime DESC"
+    }
+    
+    const { resources: conversations } = await container.items.query(querySpec).fetchAll()
+    console.log(`Found ${conversations.length} conversations in database:`)
+    
+    conversations.forEach((conv: any, index: number) => {
+      console.log(`${index + 1}. ID: ${conv.id}, Patient: ${conv.patientId}, Title: "${conv.title}", Messages: ${conv.messageCount}, Status: ${conv.status}`)
+    })
+    
+    if (conversations.length === 0) {
+      console.log('No conversations found in database!')
+    }
+  } catch (error: any) {
+    console.error('Error listing conversations:', error)
+  }
+}

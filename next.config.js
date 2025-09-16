@@ -27,6 +27,7 @@ const nextConfig = {
     COSMOS_DB_KEY: process.env.COSMOS_DB_KEY,
     COSMOS_DB_DATABASE_NAME: process.env.COSMOS_DB_DATABASE_NAME,
     COSMOS_DB_CONTAINER_NAME: process.env.COSMOS_DB_CONTAINER_NAME,
+    COSMOS_DB_CHAT_CONTAINER_NAME: process.env.COSMOS_DB_CHAT_CONTAINER_NAME,
     
     // Port configuration
     WEBSITES_PORT: process.env.WEBSITES_PORT,

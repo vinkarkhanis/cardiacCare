@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Heart, Activity, User, Sparkles, Menu, X, BarChart3, Bell, LogOut } from 'lucide-react'
 import HeartWithBeat from '@/components/HeartWithBeat'
@@ -11,12 +11,22 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import HealthDashboard from '@/components/HealthDashboard'
 import AgentPersonality from '@/components/AgentPersonality'
 import ReminderSystem from '@/components/ReminderSystem'
+import type { ChatConversationHistory } from '@/lib/types/conversation'
 
 interface Message {
   id: string
   content: string
   role: 'user' | 'assistant'
   timestamp: Date
+}
+
+interface Conversation {
+  id: string
+  conversationId: string
+  title: string
+  lastMessageTime: string
+  messageCount: number
+  status: 'active' | 'archived' | 'completed'
 }
 
 type ViewType = 'chat' | 'dashboard' | 'reminders'
@@ -36,15 +46,104 @@ function MainApp() {
   const [currentView, setCurrentView] = useState<ViewType>('chat')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+  const [conversations, setConversations] = useState<ChatConversationHistory[]>([])
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // Load user's conversation history
+  const loadUserConversations = useCallback(async () => {
+    if (!user?.patientId) return
+    
+    setIsLoadingConversations(true)
+    try {
+      console.log('🔄 Loading conversations from patient_chat for patient:', user.patientId)
+      const response = await fetch(`/api/conversations?patientId=${user.patientId}&limit=20`)
+      const data = await response.json()
+      
+      if (data.success && data.conversations) {
+        setConversations(data.conversations)
+        console.log('✅ Loaded', data.conversations.length, 'conversations from patient_chat')
+      } else {
+        console.log('ℹ️ No conversations found in patient_chat or failed to load:', data.error)
+      }
+    } catch (error) {
+      console.error('❌ Error loading conversations from patient_chat:', error)
+    } finally {
+      setIsLoadingConversations(false)
+    }
+  }, [user?.patientId])
+
+  // Load conversations when user is available
+  useEffect(() => {
+    if (user?.patientId) {
+      loadUserConversations()
+    }
+  }, [user?.patientId, loadUserConversations])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Load specific conversation history
+  const loadConversation = useCallback(async (conversationId: string) => {
+    if (!user?.patientId) return
+    
+    try {
+      console.log('🔄 Loading conversation:', conversationId)
+      const response = await fetch(`/api/conversations/${conversationId}?patientId=${user.patientId}`)
+      const data = await response.json()
+      
+      if (data.success && data.messages) {
+        // Convert message timestamps to Date objects
+        const loadedMessages: Message[] = data.messages.map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          role: msg.role,
+          timestamp: new Date(msg.timestamp)
+        }))
+        
+        setMessages(loadedMessages)
+        setCurrentConversationId(conversationId)
+        console.log('✅ Loaded conversation with', loadedMessages.length, 'messages')
+      } else {
+        console.error('❌ Failed to load conversation:', data.error)
+      }
+    } catch (error) {
+      console.error('❌ Error loading conversation:', error)
+    }
+  }, [user?.patientId])
+
+  // Auto-load most recent conversation when conversations are loaded
+  useEffect(() => {
+    if (conversations.length > 0 && !currentConversationId && messages.length <= 1) {
+      const mostRecentConversation = conversations[0]
+      // ChatConversationHistory has conversation nested
+      const conversationId = mostRecentConversation.conversation.conversationId
+      if (conversationId) {
+        console.log('🔄 Auto-loading most recent conversation:', conversationId)
+        loadConversation(conversationId)
+      }
+    }
+  }, [conversations, currentConversationId, messages.length, loadConversation])
+
+  // Start new conversation
+  const startNewConversation = () => {
+    setMessages([
+      {
+        id: '1',
+        content: `Hello ${user?.first_name}! I'm your cardiac health assistant. I'm here to help you manage your heart health, answer questions about your medications, and provide support whenever you need it. How are you feeling today?`,
+        role: 'assistant',
+        timestamp: new Date()
+      }
+    ])
+    setCurrentConversationId(null)
+    console.log('🆕 Started new conversation')
+  }
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
@@ -69,6 +168,7 @@ function MainApp() {
         },
         body: JSON.stringify({
           message: inputMessage,
+          conversationId: currentConversationId, // Include current conversation ID
           patientContext: {
             patientId: user?.patientId,
             name: `${user?.first_name} ${user?.last_name}`,
@@ -86,6 +186,14 @@ function MainApp() {
       const data = await response.json()
       
       if (data.success) {
+        // Update conversation ID if returned from API
+        if (data.conversationId && !currentConversationId) {
+          setCurrentConversationId(data.conversationId)
+          console.log('✅ New conversation ID received:', data.conversationId)
+          // Refresh conversations list to show new conversation
+          loadUserConversations()
+        }
+        
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           content: data.message,
@@ -185,6 +293,67 @@ function MainApp() {
               </motion.button>
             ))}
           </nav>
+
+          {/* Conversation History */}
+          {currentView === 'chat' && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">Recent Conversations</h3>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={startNewConversation}
+                  className="text-xs text-medical-600 hover:text-medical-700 font-medium"
+                >
+                  + New Chat
+                </motion.button>
+              </div>
+              
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {isLoadingConversations ? (
+                  <div className="text-xs text-gray-500 py-2">Loading conversations...</div>
+                ) : conversations.length > 0 ? (
+                  conversations.slice(0, 5).map((convHistory) => {
+                    // ChatConversationHistory has conversation nested
+                    const conv = convHistory.conversation
+                    const conversationId = conv.conversationId
+                    const totalExchanges = convHistory.totalExchanges || 0
+                    
+                    return (
+                      <motion.button
+                        key={conversationId}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => loadConversation(conversationId)}
+                        className={cn(
+                          "w-full text-left p-2 rounded-lg border transition-all duration-200 text-xs",
+                          currentConversationId === conversationId
+                            ? "bg-medical-100 border-medical-300 text-medical-700"
+                            : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-700"
+                        )}
+                      >
+                        <div className="font-medium truncate">{conv.title}</div>
+                        <div className="text-gray-500 text-xs">
+                          {totalExchanges} exchanges • {new Date(conv.lastMessageTime).toLocaleDateString()}
+                        </div>
+                      </motion.button>
+                    )
+                  })
+                ) : (
+                  <div className="text-xs text-gray-500 py-2">No conversations yet</div>
+                )}
+              </div>
+              
+              {conversations.length > 5 && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  className="w-full text-xs text-center text-medical-600 hover:text-medical-700 py-1"
+                >
+                  View all {conversations.length} conversations
+                </motion.button>
+              )}
+            </div>
+          )}
 
           {/* Patient Info Card */}
           <div className="p-4 bg-gradient-to-br from-healing-50 to-medical-50 rounded-xl border border-healing-200">
