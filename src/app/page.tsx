@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Heart, Activity, User, Sparkles, Menu, X, BarChart3, Bell, LogOut } from 'lucide-react'
 import HeartWithBeat from '@/components/HeartWithBeat'
 import MessageCard from '@/components/MessageCard'
+import HeartbeatLoader, { ConversationLoader } from '@/components/ui/HeartbeatLoader'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
@@ -49,6 +50,7 @@ function MainApp() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<ChatConversationHistory[]>([])
   const [isLoadingConversations, setIsLoadingConversations] = useState(false)
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -93,6 +95,7 @@ function MainApp() {
   const loadConversation = useCallback(async (conversationId: string) => {
     if (!user?.patientId) return
     
+    setIsLoadingConversation(true)
     try {
       console.log('🔄 Loading conversation:', conversationId)
       const response = await fetch(`/api/conversations/${conversationId}?patientId=${user.patientId}`)
@@ -115,6 +118,8 @@ function MainApp() {
       }
     } catch (error) {
       console.error('❌ Error loading conversation:', error)
+    } finally {
+      setIsLoadingConversation(false)
     }
   }, [user?.patientId])
 
@@ -248,7 +253,7 @@ function MainApp() {
       <motion.div
         initial={{ x: -300 }}
         animate={{ x: sidebarOpen ? 0 : -300 }}
-        className="fixed lg:relative lg:translate-x-0 w-80 h-full bg-white/90 backdrop-blur-sm border-r border-calm-200 shadow-lg z-50 lg:z-auto"
+        className="fixed lg:relative lg:translate-x-0 w-80 h-full bg-white/90 backdrop-blur-sm border-r border-calm-200 shadow-lg z-40 lg:z-auto"
       >
         <div className="p-6">
           {/* User Info */}
@@ -311,7 +316,13 @@ function MainApp() {
               
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {isLoadingConversations ? (
-                  <div className="text-xs text-gray-500 py-2">Loading conversations...</div>
+                  <div className="py-4">
+                    <HeartbeatLoader 
+                      message="Loading conversations..." 
+                      size="sm" 
+                      className="py-2"
+                    />
+                  </div>
                 ) : conversations.length > 0 ? (
                   conversations.slice(0, 5).map((convHistory) => {
                     // ChatConversationHistory has conversation nested
@@ -398,7 +409,7 @@ function MainApp() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
         />
       )}
 
@@ -489,15 +500,21 @@ function MainApp() {
               {/* Messages */}
                                 {/* Messages */}
               <div className="flex-1 overflow-y-auto chat-scrollbar px-6 py-4 space-y-6" role="log" aria-live="polite" aria-label="Conversation with cardiac health assistant">
-                <AnimatePresence>
-                  {messages.map((message, index) => (
-                    <MessageCard 
-                      key={message.id} 
-                      message={message}
-                      isLatest={index === messages.length - 1}
-                    />
-                  ))}
-                </AnimatePresence>
+                {isLoadingConversation ? (
+                  <div className="flex items-center justify-center h-full">
+                    <ConversationLoader />
+                  </div>
+                ) : (
+                  <AnimatePresence>
+                    {messages.map((message, index) => (
+                      <MessageCard 
+                        key={message.id} 
+                        message={message}
+                        isLatest={index === messages.length - 1}
+                      />
+                    ))}
+                  </AnimatePresence>
+                )}
 
                 {/* Typing indicator */}
                 <AnimatePresence>
@@ -520,13 +537,12 @@ function MainApp() {
                             </div>
                           </div>
                           <div className="px-4 py-3">
-                            <div className="flex items-center space-x-2 text-sm text-gray-500">
-                              <div className="flex space-x-1">
-                                <div className="w-2 h-2 bg-medical-400 rounded-full animate-pulse"></div>
-                                <div className="w-2 h-2 bg-medical-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                <div className="w-2 h-2 bg-medical-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                              </div>
-                              <span>Analyzing your question...</span>
+                            <div className="flex items-center space-x-3 text-sm text-gray-500">
+                              <HeartbeatLoader 
+                                message="Analyzing your question..." 
+                                size="sm" 
+                                className="py-1"
+                              />
                             </div>
                           </div>
                         </div>
@@ -628,7 +644,7 @@ function MainApp() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
             onClick={() => setShowLogoutModal(false)}
           >
             <motion.div
