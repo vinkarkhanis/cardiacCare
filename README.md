@@ -1,4 +1,17 @@
-# 🫀 Cardiac Care Health Agent
+# 🫀 C## ✨ Key Features
+
+### 🎯 Core Functionality
+- **AI Chat Assistant**: Azure AI Foundry-powered cardiac health assistant with specialized medical expertise
+- **Single Orchestration Agent**: Streamlined AI architecture with one orchestration agent managing all cardiac specialties
+- **Automatic Routing**: Intelligent internal routing to appropriate specialists based on patient query content
+- **Conversation Storage System**: Complete Azure Cosmos DB integration for persistent chat history
+- **Chat History on Login**: Automatic loading of previous conversations when patients log in
+- **Conversation Management**: Full conversation browsing, switching, and management in sidebar
+- **Real-time Message Saving**: User inputs and AI responses saved together in real-time
+- **Secure Patient Authentication**: Complete signup/login system with Azure Cosmos DB
+- **Health Dashboard**: Real-time health metrics visualization with color-coded indicators
+- **Smart Reminder System**: Medication and appointment reminders with priority levels
+- **Patient Profile Management**: Comprehensive patient data including email and mobile contacte Health Agent
 
 A modern, patient-friendly React/Next.js application designed specifically for cardiac patients to interact with an AI health assistant. Built with healthcare-appropriate design principles, comprehensive patient authentication, and real-time health management features.
 
@@ -25,6 +38,9 @@ A modern, patient-friendly React/Next.js application designed specifically for c
 ### 🔐 Security & Data Management
 - **Secure Authentication**: bcrypt password hashing with comprehensive validation
 - **Azure Cosmos DB Integration**: Scalable cloud database for patient data storage
+- **Conversation Persistence**: All patient conversations stored in dedicated patient_chat container
+- **Single-Document Storage**: Efficient conversation storage with embedded exchanges
+- **Real-time Data Sync**: Conversations automatically saved and synchronized across sessions
 - **Email & Mobile Contact**: Enhanced patient information collection
 - **Protected Routes**: Secure access control for patient data and features
 - **Logout Functionality**: Complete session management with secure logout
@@ -44,9 +60,13 @@ A modern, patient-friendly React/Next.js application designed specifically for c
 - **Single Orchestration Agent**: 
   - Orchestration Agent (asst_t5VlAQIahpzVTRn4igahAXJO): Central cardiac care coordinator that automatically routes to specialists
   - Manages internal routing to: Nursing, Exercise, Diet, and Medication specialists
-- **Azure Cosmos DB**: NoSQL database optimized for patient data
+- **Azure Cosmos DB**: NoSQL database optimized for patient data and conversation storage
+  - **patients** container: Patient authentication and profile data
+  - **patient_chat** container: Conversation history and message storage
+- **Conversation Storage System**: Complete chat history persistence with single-document approach
+- **Real-time Message Saving**: Automatic storage of user inputs and AI responses
 - **bcryptjs**: Industry-standard password hashing and verification
-- **Next.js API Routes**: Server-side authentication and AI orchestration endpoints
+- **Next.js API Routes**: Server-side authentication, AI orchestration, and conversation management endpoints
 
 ### Development & Quality
 - **ESLint**: Code quality enforcement and consistency
@@ -85,21 +105,15 @@ A modern, patient-friendly React/Next.js application designed specifically for c
    # Azure Cosmos DB Configuration
    COSMOS_DB_ENDPOINT=https://your-account.documents.azure.com:443/
    COSMOS_DB_KEY=your_actual_cosmos_db_key_from_azure_portal
-   COSMOS_DB_DATABASE_NAME=CardiacHealthDB
+   COSMOS_DB_DATABASE_NAME=patient_data
    COSMOS_DB_CONTAINER_NAME=patients
+   COSMOS_DB_CHAT_CONTAINER_NAME=patient_chat
    
    # Azure AI Foundry Configuration
-   AZURE_PROJECT_ENDPOINT=https://your-project.services.ai.azure.com/api/projects/your-project
-   AZURE_SUBSCRIPTION_ID=your-azure-subscription-id
-   AZURE_RESOURCE_GROUP_NAME=your-resource-group-name
-   AZURE_PROJECT_NAME=your-project-name
-   
-   # Azure OpenAI Configuration (for Azure AI Foundry agents)
-   AZURE_OPENAI_ENDPOINT=https://your-openai.openai.azure.com/
-   AZURE_OPENAI_API_VERSION=2024-12-01-preview
-   
-   # Single Orchestration Agent ID
-   ORCHESTRATION_AGENT_ID=asst_t5VlAQIahpzVTRn4igahAXJO
+   AZURE_AI_FOUNDRY_PROJECT_ENDPOINT=https://your-project.services.ai.azure.com/api/projects/your-project
+   AZURE_AI_FOUNDRY_API_KEY=your_azure_ai_foundry_api_key
+   AZURE_AI_ORCHESTRATION_AGENT_ID=asst_t5VlAQIahpzVTRn4igahAXJO
+   OPENAI_API_VERSION=2024-12-01-preview
    ```
    
    **⚠️ Security Note**: Never commit `.env.local` or any file containing real secrets to version control!
@@ -125,7 +139,7 @@ src/
 ├── app/                          # Next.js App Router
 │   ├── globals.css              # Global styles with healthcare theme
 │   ├── layout.tsx               # Root layout with authentication context
-│   ├── page.tsx                 # Main chat interface with dashboard
+│   ├── page.tsx                 # Main chat interface with conversation history
 │   ├── login/                   # Patient authentication pages
 │   │   └── page.tsx             # Login form with patient ID validation
 │   ├── signup/                  # Patient registration
@@ -134,8 +148,12 @@ src/
 │       ├── auth/                # Authentication API endpoints
 │       │   ├── login/           # Patient login API
 │       │   └── signup/          # Patient registration API
-│       └── chat/                # AI Chat API
-│           └── route.ts         # Azure AI Foundry integration endpoint
+│       ├── chat/                # AI Chat API with conversation storage
+│       │   └── route.ts         # Azure AI Foundry integration + message saving
+│       └── conversations/       # Conversation management API
+│           ├── route.ts         # List all patient conversations
+│           └── [conversationId]/ # Individual conversation operations
+│               └── route.ts     # Get conversation history with messages
 ├── components/                   # Reusable healthcare components
 │   ├── AgentPersonality.tsx     # AI agent mood and personality system
 │   ├── HealthDashboard.tsx      # Health metrics visualization
@@ -147,7 +165,16 @@ src/
 ├── lib/                         # Core utilities and configurations
 │   ├── database/               # Azure Cosmos DB operations
 │   │   ├── cosmos.ts           # Database connection and setup
-│   │   └── patients.ts         # Patient CRUD operations with validation
+│   │   ├── patients.ts         # Patient CRUD operations with validation
+│   │   ├── chat.ts             # Chat database connection utilities
+│   │   └── chatConversations.ts # Complete conversation management system
+│   ├── types/                  # TypeScript interfaces
+│   │   ├── patient.ts          # Patient data models and auth types
+│   │   └── conversation.ts     # Conversation and message type definitions
+│   ├── services/               # Azure AI Foundry integration
+│   │   ├── cardiacAgent.ts     # Simplified single orchestration agent service
+│   │   ├── cardiacAgent-backup.ts # Previous multi-agent implementation (backup)
+│   │   └── cardiacAgentOrchestration.ts # Reference orchestration service
 │   ├── services/               # Azure AI Foundry integration
 │   │   ├── cardiacAgent.ts     # Simplified single orchestration agent service
 │   │   ├── cardiacAgent-backup.ts # Previous multi-agent implementation (backup)
@@ -157,6 +184,146 @@ src/
 │   └── utils.ts                # Helper functions and utilities
 └── styles/                     # Additional styling assets
 ```
+
+## 💬 Conversation Storage System
+
+### 🗄️ Database Architecture
+
+#### Azure Cosmos DB Containers
+- **`patients`**: Patient authentication and profile data
+- **`patient_chat`**: Conversation history and message storage with patientId as partition key
+
+#### Single-Document Storage Approach
+Each patient conversation is stored as a single document containing all exchanges:
+
+```typescript
+interface ChatConversation {
+  id: string                   // Cosmos DB document ID
+  patientId: string           // Partition key and foreign key to patient
+  conversationId: string      // Conversation identifier 
+  title: string              // Auto-generated or user-set title
+  startTime: string          // When conversation started
+  lastMessageTime: string    // Last activity timestamp
+  exchangeCount: number      // Total exchanges in conversation
+  status: 'active' | 'archived' | 'completed'
+  
+  // All exchanges stored within this single document
+  exchanges: ChatExchange[]  // Array of all user-AI exchanges
+  
+  created_at: string
+  updated_at: string
+}
+
+interface ChatExchange {
+  exchangeId: string         // Unique exchange ID within conversation
+  exchangeNumber: number     // Order within conversation (1, 2, 3...)
+  timestamp: string         // When the exchange started
+  
+  // User input
+  userMessage: {
+    content: string         // User's question/message
+    timestamp: string       // When user sent the message
+    messageLength: number   // Length of user message
+  }
+  
+  // AI response
+  aiResponse: {
+    content: string         // AI agent's response
+    timestamp: string       // When AI responded
+    messageLength: number   // Length of AI response
+    processingTime: number  // How long AI took to respond (ms)
+    agentUsed: string      // Which AI agent provided response
+    success: boolean       // Whether AI response was successful
+    error?: string         // Error message if AI failed
+  }
+}
+```
+
+### 🔄 Real-time Chat History Features
+
+#### Automatic Conversation Loading on Login
+- **Most Recent Conversation**: Automatically loads the user's most recent conversation when they log in
+- **Seamless Experience**: Returning users see their conversation history immediately
+- **Context Preservation**: Maintains conversation context across login sessions
+
+#### Conversation Management
+- **Sidebar Navigation**: Browse all previous conversations in the sidebar
+- **Conversation Switching**: Click any conversation to load its full history
+- **Real-time Updates**: New conversations appear in sidebar immediately after creation
+- **Conversation Metadata**: Shows exchange count, last activity date, and conversation titles
+
+#### Message Persistence
+- **Real-time Saving**: Every user input and AI response automatically saved to Azure Cosmos DB
+- **Complete Exchanges**: User questions and AI responses stored together as complete exchanges
+- **Performance Metrics**: Processing time, agent used, and success status tracked
+- **Error Handling**: Failed AI responses logged for debugging and improvement
+
+### 🛠️ API Endpoints
+
+#### Conversation Management APIs
+```typescript
+// GET /api/conversations - List all patient conversations
+GET /api/conversations?patientId=PATIENT_ID&limit=20&offset=0
+
+Response: {
+  success: boolean
+  conversations: ChatConversationHistory[]
+  totalConversations: number
+}
+
+// GET /api/conversations/[conversationId] - Get specific conversation with full message history
+GET /api/conversations/CONV_ID?patientId=PATIENT_ID
+
+Response: {
+  success: boolean
+  conversation: ChatConversation
+  exchanges: ChatExchange[]
+  messages: Message[]  // UI-compatible format
+  totalExchanges: number
+}
+
+// POST /api/chat - Send message and save complete exchange
+POST /api/chat
+Body: {
+  message: string
+  conversationId?: string  // null for new conversation
+  patientContext: PatientContext
+}
+
+Response: {
+  success: boolean
+  message: string  // AI response
+  conversationId: string
+  timestamp: string
+  processingTime: number
+}
+```
+
+#### Database Operations
+```typescript
+// Core conversation functions
+- createChatConversation(data: CreateChatConversationData)
+- saveChatExchange(data: SaveChatExchangeData)
+- getChatConversationHistory(conversationId: string, patientId: string)
+- getPatientChatConversations(patientId: string)
+- getChatConversationExchanges(conversationId: string, patientId: string)
+- getAllPatientExchanges(patientId: string)
+- deleteChatConversation(conversationId: string, patientId: string)
+```
+
+### 📊 Performance & Scalability
+
+#### Optimized Database Queries
+- **Partition Key Strategy**: Uses patientId as partition key for optimal performance
+- **Single Document Reads**: Conversation + all exchanges retrieved in one operation
+- **Efficient Updates**: Appends new exchanges to existing conversation documents
+- **Pagination Support**: Built-in pagination for large conversation lists
+
+#### Storage Efficiency
+- **Embedded Exchanges**: No separate documents for individual messages
+- **Reduced Storage Costs**: Single document per conversation reduces document count
+- **Improved Performance**: Fewer database operations required for conversation loading
+- **Atomic Updates**: Exchange additions are atomic operations
 
 ## 🏥 Healthcare-Specific Features
 
@@ -387,16 +554,40 @@ CMD ["npm", "start"]
 # Verify environment variables
 echo $COSMOS_DB_ENDPOINT
 echo $COSMOS_DB_KEY
+echo $COSMOS_DB_CHAT_CONTAINER_NAME
 
 # Test connectivity
 curl -I $COSMOS_DB_ENDPOINT
 ```
 
+**Conversation Storage Issues**
+```bash
+# Test conversation storage system
+node src/tests/testPatientChat.ts
+
+# Check chat container configuration
+echo $COSMOS_DB_CHAT_CONTAINER_NAME
+
+# Verify patient_chat container exists in Azure Portal
+# Container should have patientId as partition key
+```
+
+**Chat History Loading Issues**
+```typescript
+// Debug conversation loading in browser console
+// Check for these logs:
+"🔄 Loading conversations from patient_chat for patient: PATIENT_ID"
+"✅ Loaded X conversations from patient_chat"
+"🔄 Auto-loading most recent conversation: CONV_ID"
+"✅ Loaded conversation with X messages"
+```
+
 **AI Agent Issues**
 ```bash
 # Verify Azure AI configuration
-echo $AZURE_PROJECT_ENDPOINT
-echo $ORCHESTRATION_AGENT_ID
+echo $AZURE_AI_FOUNDRY_PROJECT_ENDPOINT
+echo $AZURE_AI_ORCHESTRATION_AGENT_ID
+echo $AZURE_AI_FOUNDRY_API_KEY
 
 # Test Azure authentication
 az account show
@@ -427,30 +618,44 @@ npm install
 
 ## 🔮 Future Roadmap
 
-### ✅ Phase 1: Simplified AI Integration (COMPLETED)
+### ✅ Phase 1: Core AI & Authentication (COMPLETED)
 - **Azure AI Foundry**: Real AI responses for patient queries with single orchestration agent
 - **Streamlined Architecture**: Single agent handling all cardiac specialties internally
 - **Automatic Routing**: Intelligent query analysis and internal specialist routing
 - **Secure Configuration**: Environment-based Azure AI credentials
 - **Simplified Message Flow**: Clean patient context + question format
+- **Patient Authentication**: Complete signup/login system with Azure Cosmos DB
 
-### Phase 2: Enhanced Health Features
+### ✅ Phase 2: Conversation Storage System (COMPLETED)
+- **Conversation Persistence**: Complete Azure Cosmos DB integration for chat history
+- **Single-Document Storage**: Efficient conversation storage with embedded exchanges
+- **Chat History on Login**: Automatic loading of previous conversations when patients log in
+- **Conversation Management**: Full conversation browsing, switching, and management
+- **Real-time Message Saving**: User inputs and AI responses saved together automatically
+- **Conversation APIs**: Complete REST API endpoints for conversation operations
+- **Performance Optimization**: Efficient database queries with proper indexing
+
+### 🔄 Phase 3: Enhanced Health Features (IN PROGRESS)
 - **Wearable Device Integration**: Apple Health, Fitbit, Garmin connectivity
 - **Biometric Data Sync**: Real-time heart rate and blood pressure monitoring
 - **Health Reports**: PDF generation for healthcare provider sharing
 - **Advanced Analytics**: Health trend analysis with predictive insights
+- **Conversation Search**: Full-text search across conversation history
+- **Conversation Export**: Export conversation history for healthcare providers
 
-### Phase 3: Communication Features
+### Phase 4: Communication Features
 - **Voice Interaction**: Speech-to-text and text-to-speech capabilities
 - **Video Consultations**: Telemedicine integration with healthcare providers
 - **Emergency Contacts**: Family/caregiver notifications and alerts
 - **Multi-language Support**: Localization for diverse patient populations
+- **Conversation Sharing**: Share specific conversations with healthcare providers
 
-### Phase 4: Advanced AI Capabilities
-- **Conversation Memory**: Persistent patient conversation history across sessions
-- **Personalized Recommendations**: AI-driven lifestyle and medication suggestions
-- **Health Risk Assessment**: Predictive modeling for cardiac events
+### Phase 5: Advanced AI Capabilities
+- **Enhanced Conversation Memory**: Cross-conversation context and learning
+- **Personalized Recommendations**: AI-driven lifestyle and medication suggestions based on conversation history
+- **Health Risk Assessment**: Predictive modeling for cardiac events using conversation patterns
 - **Clinical Decision Support**: Integration with electronic health records
+- **Conversation Analytics**: Insights from patient conversation patterns
 
 ## 🤝 Contributing
 
@@ -482,6 +687,24 @@ npm run type-check
 
 # Check code quality
 npm run lint
+
+# Test conversation storage system
+npm run test:conversations
+
+# Test Azure Cosmos DB connectivity
+node src/tests/testPatientChat.ts
+```
+
+### Conversation Storage Testing
+The project includes comprehensive testing for the conversation storage system:
+
+```typescript
+// Test conversation creation and message saving
+- createChatConversation(): Creates new conversation documents
+- saveChatExchange(): Saves complete user+AI exchanges
+- getChatConversationHistory(): Retrieves full conversation with exchanges
+- getPatientChatConversations(): Lists all patient conversations
+- Real-time conversation loading and switching functionality
 ```
 
 ## 📄 License
@@ -564,13 +787,38 @@ Create new components in the `/src/components` directory following the establish
 - **Real-time AI Responses**: Live agent communication with optimized performance
 - **Healthcare UI**: Patient-friendly interface with accessibility compliance
 - **Authentication System**: Secure patient login/signup with Azure Cosmos DB
+- **Conversation Storage System**: Complete chat history persistence with Azure Cosmos DB
+- **Chat History on Login**: Automatic loading of previous conversations when patients log in
+- **Conversation Management**: Full conversation browsing, switching, and sidebar navigation
+- **Real-time Message Saving**: Automatic storage of user inputs and AI responses as complete exchanges
+- **Single-Document Storage**: Efficient conversation storage with embedded exchanges array
+- **Conversation APIs**: Complete REST API endpoints for conversation operations
+- **Type-Safe Implementation**: Comprehensive TypeScript interfaces for all conversation data
 
-### 🚀 Live Application
+### 🚀 Live Application Features
 - **Development Server**: Ready to run on `http://localhost:3000`
 - **AI Integration**: Active Azure AI Foundry orchestration agent responses
-- **Database**: Connected to Azure Cosmos DB for patient data
+- **Database**: Connected to Azure Cosmos DB for patient data and conversation storage
+- **Conversation Persistence**: All patient conversations automatically saved and retrievable
+- **Chat History Sidebar**: Previous conversations displayed with metadata and quick switching
+- **Auto-load Latest**: Most recent conversation automatically loads on patient login
+- **Real-time Updates**: New conversations appear in sidebar immediately after creation
 - **Security**: All sensitive credentials in environment variables
-- **Testing**: Verified end-to-end patient conversations with single orchestration agent
+- **Testing**: Verified end-to-end patient conversations with persistent storage
+
+### 🗄️ Database Architecture Status
+- **Primary Container (`patients`)**: Patient authentication and profile data ✅
+- **Chat Container (`patient_chat`)**: Conversation history with patientId partition key ✅
+- **Single-Document Storage**: All conversation exchanges stored within conversation documents ✅
+- **Efficient Queries**: Optimized database operations for conversation loading ✅
+- **Real-time Sync**: Conversations automatically saved and synchronized ✅
+
+### 🔧 API Endpoints Status
+- **GET /api/conversations**: List all patient conversations ✅
+- **GET /api/conversations/[id]**: Get specific conversation with message history ✅
+- **POST /api/chat**: Send messages and save complete exchanges ✅
+- **Authentication APIs**: Login/signup with patient validation ✅
+- **Error Handling**: Comprehensive error handling and logging ✅
 
 ## 📋 Project Structure
 
