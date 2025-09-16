@@ -159,10 +159,55 @@ class CardiacAgentService {
       };
 
     } catch (error) {
-      console.log('💥 Orchestration error:', error);
+      console.log('💥 =================================');
+      console.log('💥 CARDIAC AGENT ERROR DETAILS');
+      console.log('💥 =================================');
+      console.log('🚫 Error type:', error instanceof Error ? error.constructor.name : 'Unknown');
+      console.log('💬 Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.log('📝 Full error object:', error);
+      
+      // Log specific Azure-related error details
+      if (error instanceof Error) {
+        console.log('🔍 Error details:');
+        console.log('   Name:', error.name);
+        console.log('   Message:', error.message);
+        
+        // Check for specific Azure authentication errors
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          console.log('🔐 Authentication error detected - check Azure credentials');
+        }
+        if (error.message.includes('404') || error.message.includes('Not Found')) {
+          console.log('🔍 Resource not found - check Azure AI Foundry endpoint and agent ID');
+        }
+        if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          console.log('🚫 Permission denied - check Azure AI Foundry permissions');
+        }
+        
+        if (error.stack) {
+          console.log('📊 Stack trace (first 500 chars):');
+          console.log(error.stack.substring(0, 500));
+        }
+      }
+      console.log('💥 =================================');
+      
+      // Provide more specific error messages based on error type
+      let userMessage = "I apologize, but I'm experiencing technical difficulties. Please contact your healthcare provider for immediate assistance.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          userMessage = "I'm currently experiencing authentication issues. Please try again in a moment or contact your healthcare provider.";
+        } else if (error.message.includes('404') || error.message.includes('Not Found')) {
+          userMessage = "I'm having trouble connecting to my knowledge base. Please try again or contact your healthcare provider.";
+        } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          userMessage = "I don't have the necessary permissions to answer right now. Please contact your healthcare provider.";
+        } else if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+          userMessage = "My response is taking longer than expected. Please try again or contact your healthcare provider.";
+        }
+      }
+      
       return {
         success: false,
-        message: "I apologize, but I'm experiencing technical difficulties. Please contact your healthcare provider for immediate assistance.",
+        message: userMessage,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }

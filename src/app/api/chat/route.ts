@@ -8,9 +8,11 @@ export async function POST(request: NextRequest) {
   
   // Log environment variable status for debugging
   console.log('🔍 Environment Variables Check:');
+  console.log('   AZURE_AI_FOUNDRY_PROJECT_ENDPOINT:', process.env.AZURE_AI_FOUNDRY_PROJECT_ENDPOINT ? 'SET' : 'NOT SET');
   console.log('   AZURE_AI_ORCHESTRATION_AGENT_ID:', process.env.AZURE_AI_ORCHESTRATION_AGENT_ID ? 'SET' : 'NOT SET');
-  console.log('   AZURE_PROJECT_NAME:', process.env.AZURE_PROJECT_NAME ? 'SET' : 'NOT SET');
+  console.log('   AZURE_AI_FOUNDRY_API_KEY:', process.env.AZURE_AI_FOUNDRY_API_KEY ? 'SET' : 'NOT SET');
   console.log('   NODE_ENV:', process.env.NODE_ENV);
+  console.log('   WEBSITES_PORT:', process.env.WEBSITES_PORT || 'NOT SET');
   
   try {
     const requestBody = await request.json();
