@@ -29,7 +29,7 @@ export default function LoginPage() {
     e.preventDefault()
     
     if (!formData.patientId || !formData.password) {
-      setError('Please enter both Patient ID and password')
+      setError('Please enter both User ID and password')
       return
     }
 
@@ -104,11 +104,11 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
 
-            {/* Patient ID */}
+            {/* User ID */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 <User className="w-4 h-4 inline mr-1" />
-                Patient ID
+                User ID
               </label>
               <input
                 type="text"
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 value={formData.patientId}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:border-transparent transition-all duration-200"
-                placeholder="Enter your Patient ID (e.g., PT12345678)"
+                placeholder="Enter your User ID (e.g., PT12345678)"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -179,7 +179,7 @@ export default function LoginPage() {
           >
             <p className="text-sm text-calm-700 font-medium mb-2">Need help?</p>
             <ul className="text-xs text-calm-600 space-y-1">
-              <li>• Your Patient ID was provided after registration</li>
+              <li>• Your User ID was provided after registration</li>
               <li>• It starts with &quot;PT&quot; followed by 8 characters</li>
               <li>• Contact support if you&apos;ve forgotten your credentials</li>
             </ul>

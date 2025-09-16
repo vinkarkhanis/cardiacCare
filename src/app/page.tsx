@@ -481,7 +481,7 @@ function MainApp() {
               
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-700">
-                  You&apos;ll need to log back in with your patient ID: 
+                  You&apos;ll need to log back in with your User ID: 
                   <span className="font-mono font-medium text-medical-600 ml-1">{user?.patientId}</span>
                 </p>
               </div>

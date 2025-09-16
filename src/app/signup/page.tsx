@@ -39,7 +39,7 @@ const SuccessModal = ({ isOpen, patientId, onClose }: SuccessModalProps) => {
             <p className="text-xl font-mono font-bold text-medical-700 bg-medical-100 px-4 py-2 rounded-lg">{patientId}</p>
           </div>
           <p className="text-gray-600 mb-6">
-            Please save this Patient ID safely. You&apos;ll need it to log into your account.
+            Please save this User ID safely. You&apos;ll need it to log into your account.
           </p>
           <Link
             href="/login"
